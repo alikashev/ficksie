@@ -22,7 +22,7 @@ $appName = APP_NAME;
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=VT323&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-    <link rel="stylesheet" href="assets/css/style.css?v=100">
+    <link rel="stylesheet" href="assets/css/style.css?v=110">
 </head>
 <body>
     <div id="app">
@@ -78,6 +78,10 @@ $appName = APP_NAME;
                     <i class="fas fa-file-lines"></i>
                     <span class="nav-pill-label">Text Editor</span>
                 </a>
+                <a class="nav-pill" data-view="text-toolkit" title="Text Toolkit">
+                    <i class="fas fa-font"></i>
+                    <span class="nav-pill-label">Text Toolkit</span>
+                </a>
                 <a class="nav-pill" data-view="ip-reputation" title="IP Reputation">
                     <i class="fas fa-shield-halved"></i>
                     <span class="nav-pill-label">IP Reputation</span>
@@ -93,6 +97,10 @@ $appName = APP_NAME;
                 <a class="nav-pill" data-view="ssl-toolkit" title="SSL/TLS">
                     <i class="fas fa-shield-halved"></i>
                     <span class="nav-pill-label">SSL/TLS</span>
+                </a>
+                <a class="nav-pill" data-view="email-deliverability" title="Email Tester">
+                    <i class="fas fa-paper-plane"></i>
+                    <span class="nav-pill-label">Email Tester</span>
                 </a>
                 <a class="nav-pill admin-only" data-view="users" title="Manage Users">
                     <i class="fas fa-users"></i>
@@ -329,7 +337,9 @@ $appName = APP_NAME;
 <script src="assets/js/dns.js?v=40"></script>
 <script src="assets/js/password-generator.js?v=22"></script>
 <script src="assets/js/ssl-toolkit.js?v=7"></script>
+    <script src="assets/js/email-tester.js?v=7"></script>
+    <script src="assets/js/text-toolkit.js?v=2"></script>
 
-    <script src="assets/js/app.js?v=116"></script>
+    <script src="assets/js/app.js?v=120"></script>
 </body>
 </html>

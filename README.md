@@ -1,6 +1,6 @@
 # ficksie
 
-A modular web application for managing developer tools — store Linux commands, save email response snippets, anonymize email addresses, analyze DNS, check SSL certificates, generate CSRs, decode certificates, investigate IP reputation, and more. Built with PHP + MySQL and a vanilla JavaScript SPA frontend.
+A modular web application for managing developer tools — store Linux commands, save email response snippets, anonymize email addresses, analyze DNS, check SSL certificates, generate CSRs, decode certificates, investigate IP reputation, test email deliverability, transform text with 34 built-in operations, and more. Built with PHP + MySQL and a vanilla JavaScript SPA frontend.
 
 No build tools, no Node.js, no framework dependencies. Just upload and go.
 
@@ -15,8 +15,11 @@ No build tools, no Node.js, no framework dependencies. Just upload and go.
 - **Password Generator** — Generate strong random passwords with customizable length and character sets.
 - **DNS Lookup Suite** — Comprehensive DNS analysis: A, AAAA, CNAME, MX, TXT, CAA, SRV, SOA records, SPF/DKIM/DMARC validation, nameserver checks, delegation analysis, reverse DNS (PTR), subdomain discovery, DNSSEC status, EDNS support, and a dig-like query tool.
 - **SSL/TLS Toolkit** — Certificate checker, chain validator, TLS version tester, HSTS checker, combined security audit, CSR decoder, and CSR generator with SAN support.
+- **Email Deliverability Tester** — Generate a unique test email address, send an email to it, and receive a comprehensive analysis of authentication (SPF, DKIM, DMARC, ARC), message structure, MIME, HTML quality, content signals, links, attachments, and delivery path. Produces a transparent 0-100 score with actionable recommendations.
+- **Text Toolkit** — 34 client-side text operations in six categories: Transform (case conversion, slugs, reversing), Clean (trim, dedupe, sort, strip HTML/entities/punctuation), Extract (domains, URLs, emails, IPs, numbers, hashtags), Encode/Decode (URL, Base64), Format (JSON, CSV, line numbers), and Analyze (text statistics, word frequency, find & replace, regex tester). Everything runs locally in the browser — no data ever leaves your machine.
 - **IP Reputation Checker** — Aggregate data from ip-api.com (ASN/GeoIP), Spamhaus DNSBL, TOR exit node detection, AbuseIPDB, and VirusTotal. Computes a risk score and reputation rating.
 - **Dashboard** — Quick overview of all tools with stats, CRM & provider links, and external tool shortcuts with branded icons.
+- **Spotlight Search** — Press `Ctrl+F` (`Cmd+F` on Mac) on the dashboard for an Apple-style Spotlight overlay that searches every tool, CRM/provider link, nested sub-link, and external tool with keyboard navigation and match highlighting.
 - **Multi-tab SPA** — Open multiple tools simultaneously in tabs. Each tab preserves its own state.
 - **Dark/Light theme** — Persistent toggle.
 - **Responsive** — Works on desktop and mobile.
@@ -88,6 +91,7 @@ Open `https://yourdomain.com/` in your browser. The first user to register becom
 | `DEBUG` | Show detailed errors | `false` |
 | `ABUSEIPDB_KEY` | AbuseIPDB API key (optional) | `''` |
 | `VIRUSTOTAL_KEY` | VirusTotal API key (optional) | `''` |
+| `EMAIL_TEST_DOMAIN` | Domain for generating test email addresses (required for Email Tester) | `''` |
 
 ## Development
 
@@ -112,21 +116,28 @@ Then open `http://localhost:8080/`.
 │   ├── search.php              # Global search
 │   ├── dns.php                 # DNS Lookup Suite
 │   ├── ssl.php                 # SSL/TLS (check, chain, tls, hsts, audit, csr-decode, csr-generate)
-│   └── ip-reputation.php       # IP Reputation Checker
+│   ├── ip-reputation.php       # IP Reputation Checker
+│   ├── email-test.php          # Email Deliverability Tester (test creation, status, analysis)
+│   ├── email-test-receive.php  # Webhook for receiving raw emails (no auth required)
+│   └── email-test-pipe.php     # Exim pipe transport script with DNS-based auth checks
 ├── assets/
 │   ├── css/style.css           # Complete stylesheet
 │   └── js/
-│       ├── app.js              # SPA core, tab system, dashboard, nav
+│       ├── app.js              # SPA core, tab system, dashboard, Spotlight search
 │       ├── dns.js              # DNS tool frontend logic
 │       ├── ssl-toolkit.js      # SSL/TLS tool frontend logic (audit, CSR decoder, CSR generator)
-│       └── password-generator.js # Password generator frontend logic
+│       ├── password-generator.js # Password generator frontend logic
+│       ├── email-tester.js     # Email Deliverability Tester frontend logic
+│       └── text-toolkit.js     # Text Toolkit frontend logic (34 client-side operations)
 ├── database/
 │   ├── schema.sql              # Database tables
 │   └── seed.sql                # Sample data
 ├── includes/
 │   ├── database.php            # PDO singleton
 │   ├── functions.php           # Route parser, CORS, sanitization, auth helpers
-│   └── response.php            # JSON response helpers
+│   ├── response.php            # JSON response helpers
+│   ├── email-parser.php        # Raw email parser (headers, MIME, links, attachments)
+│   └── email-analyzer.php      # Deliverability analysis engine (scoring, findings)
 ├── config.php                  # Application configuration (gitignored)
 ├── config.example.php          # Configuration template
 ├── index.php                   # SPA entry point (loads all JS/CSS)
@@ -216,10 +227,111 @@ Returns a composite risk score (0–100) and reputation rating (safe/suspicious/
 
 Client-side password generator with customizable length and character classes (uppercase, lowercase, digits, symbols).
 
+### Text Toolkit
+
+Thirty-four text operations, all executed client-side (100% private — nothing is sent to the server). Organized into six categories with a quick-action bar, live char/word counts, and copy/download/swap/paste/clear actions:
+
+- **Transform** — UPPERCASE, lowercase, Title Case, Sentence case, URL slug (Unicode-aware), reverse text, reverse lines, shuffle lines
+- **Clean** — Trim lines, remove empty lines, deduplicate lines, sort lines (natural/alphanumeric, case options), strip HTML tags, decode HTML entities, remove punctuation, tabs ↔ spaces, add prefix/suffix
+- **Extract** — Domains (with TLD validation), URLs (balanced-paren aware), email addresses, IP addresses (IPv4 + IPv6), numbers, hashtags & mentions
+- **Encode / Decode** — URL encode/decode (malformed input surfaces an error), Base64 encode/decode (Unicode-safe via TextEncoder)
+- **Format** — JSON formatter/minifier/validator (error position reporting), CSV → columns with separator options, line numbering
+- **Analyze** — Text statistics (9 metrics incl. reading time), word frequency with bar chart, find & replace (case/whole-word options), regex tester with capture groups and flag toggles
+
+Debounced live refresh as you type; fixed-height panels so switching operations never shifts the layout.
+
+### Email Deliverability Tester
+
+A Mail-Tester-inspired tool for testing email deliverability and authentication. Generates a unique temporary email address, receives the test email, and produces a comprehensive analysis.
+
+#### Features
+
+- **Authentication Analysis** — SPF, DKIM, DMARC, and ARC verification with detailed results
+- **Message Structure** — MIME structure analysis, plain-text/HTML detection, attachments
+- **Content Quality** — Spam word detection, uppercase analysis, punctuation, subject line review
+- **Link Analysis** — URL extraction, HTTPS status, malformed URL detection
+- **Delivery Path** — Received header parsing, hop count, sending IP tracking
+- **Spam Signals** — X-Spam-Score/Flag detection, List-Unsubscribe presence
+- **Transparent Scoring** — 0-100 score with clear grade (Excellent/Good/Fair/Poor/Critical)
+
+#### Configuration
+
+Add to `config.php`:
+
+```php
+define('EMAIL_TEST_DOMAIN', 'test.yourdomain.com');
+```
+
+#### Mail Server Setup
+
+To receive emails for the test domain, configure your mail server to deliver emails sent to `*@EMAIL_TEST_DOMAIN` to the Ficksie receive endpoint:
+
+**Option 1: Postfix Pipe Transport**
+
+Add to `/etc/aliases` or Postfix transport:
+```
+test-*: "| curl -X POST -H 'Content-Type: application/json' -d '{\"to\":\"$USER\",\"raw_email\":\"$(cat)\"}' https://yourdomain.com/api/email-test-receive"
+```
+
+**Option 2: Exim Pipe Transport**
+
+Route mail for the test domain through the included pipe script (`api/email-test-pipe.php`), which performs DNS-based SPF/DKIM/DMARC checks, PTR validation, TLS detection, HELO extraction, and blocklist lookups before injecting `Authentication-Results` headers:
+
+```
+test_domain:
+    driver = redirect
+    domains = +local_domains
+    local_part_prefix = test-
+    data = "|/usr/bin/php /path/to/public_html/api/email-test-pipe.php ${local_part}"
+    pipe_transport = address_pipe
+```
+
+**Option 3: Forward to a Script**
+
+Set up a mail alias that pipes the raw email to a PHP script which POSTs to the receive endpoint.
+
+**Option 4: External Webhook**
+
+Configure an external mail-forwarding service or inbound email provider to POST raw emails to:
+```
+POST https://yourdomain.com/api/email-test-receive
+Content-Type: application/json
+Body: {"to": "test-xxxx@yourdomain.com", "raw_email": "...raw email..."}
+```
+
+#### API Endpoints
+
+| Method | Endpoint | Description |
+|---|---|---|
+| POST | `/api/email-test/create` | Generate a new test email address |
+| GET | `/api/email-test/status/{token}` | Check test status |
+| GET | `/api/email-test/analysis/{token}` | Get full analysis results |
+| POST | `/api/email-test/check` | Check for received email and analyze |
+| GET | `/api/email-test/tests` | List recent tests |
+| POST | `/api/email-test-receive` | Webhook to receive raw emails (no auth) |
+
+#### Security
+
+- Raw email content is stored temporarily in the database
+- Tests expire after 1 hour
+- Each user can only access their own tests
+- Received email HTML is never rendered directly in the UI
+- The receive webhook validates recipient addresses against existing tests
+- Old tests are cleaned up automatically
+
+#### Cleanup
+
+Tests in `waiting` status are automatically marked as `expired` after their `expires_at` time. You can periodically clean up old records:
+
+```sql
+DELETE FROM email_tests WHERE created_at < DATE_SUB(NOW(), INTERVAL 7 DAY);
+```
+
 ## Dashboard
 
 The dashboard includes:
 
+- **Spotlight Search** — `Ctrl+F` / `Cmd+F` opens a Spotlight-style overlay (frosted blur, keyboard navigation with arrow keys, Enter to open, Esc to close). Searches all tools (with hidden keywords, e.g. "cert" finds SSL/TLS), CRM & provider links including nested sub-links, external tools, and user management. Tools open in-app; links open in a new tab.
 - **Tool cards** — Quick access to all tools with descriptions and icons
 - **Stats** — Command count, snippet count, registered users
 - **CRM & Provider Links** — Direct links to hosting provider panels (Versio, Flexwebhosting, Neostrada, Yourhosting, etc.) with expandable sub-links, sorted alphabetically with branded icon initials
@@ -248,9 +360,9 @@ The dashboard includes:
 2. Add an API endpoint in `api/`
 3. Register the route in `api/index.php`
 4. Add the tool config in the `tools` array in `assets/js/app.js`
-5. Add the render function in `assets/js/app.js`
-6. Add the tool card to the dashboard tools grid
-7. Add the sidebar section to the nav sections array
+5. Add the render function — either in `assets/js/app.js` (like `renderDnsLookup`) or a dedicated file like `assets/js/text-toolkit.js` exposing `renderXxx()` (load it via `<script>` in `index.php` before `app.js`)
+6. Add the tool card to the dashboard tools grid and to the Spotlight index (`spMount` in `assets/js/app.js`)
+7. Add the sidebar pill in `index.php`
 8. Add a `viewMeta` entry in `assets/js/app.js` with title, tabLabel, subtitle, and icon
-9. Add CSS styles in `assets/css/style.css`
-10. Bump the `?v=N` cache buster for the modified JS/CSS files in `index.php`
+9. Add CSS styles in `assets/css/style.css`, prefixed with your tool's abbreviation (e.g. `tt-`, `ssl-`, `edt-`)
+10. Bump the `?v=N` cache buster for every modified JS/CSS file in `index.php`

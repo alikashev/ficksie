@@ -27,8 +27,8 @@ $resource = $parts[0] ?? null;
 define('API_ROUTER_ACTIVE', true);
 
 try {
-    // Require auth for all routes except auth
-    if ($resource !== 'auth') {
+    // Require auth for all routes except auth and email-test-receive
+    if ($resource !== 'auth' && $resource !== 'email-test-receive') {
         require_auth();
     }
 
@@ -59,6 +59,12 @@ try {
             break;
         case 'ssl':
             require __DIR__ . '/ssl.php';
+            break;
+        case 'email-test':
+            require __DIR__ . '/email-test.php';
+            break;
+        case 'email-test-receive':
+            require __DIR__ . '/email-test-receive.php';
             break;
         default:
             Response::notFound('API endpoint not found');

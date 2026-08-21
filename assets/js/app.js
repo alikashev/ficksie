@@ -228,6 +228,8 @@ const viewMeta = {
     'dns-lookup':         { title: 'Nomenclature Oracle',    tabLabel: 'DNS Lookup',       subtitle: 'Interrogating the hierarchical phonebook of the internet', icon: 'fa-globe' },
     'password-generator': { title: 'Entropy Fabricator',     tabLabel: 'Password Generator',subtitle: 'Concocting unhackable gibberish so you don\'t have to', icon: 'fa-key' },
     'ssl-toolkit':        { title: 'Certificate Autopsy',    tabLabel: 'SSL/TLS',  subtitle: 'Dissecting trust chains and their existential crises', icon: 'fa-shield-halved' },
+    'email-deliverability': { title: 'Deliverability Lab',   tabLabel: 'Email Tester',  subtitle: 'Email authentication, content, and deliverability analysis', icon: 'fa-paper-plane' },
+    'text-toolkit':       { title: 'String Theory',          tabLabel: 'Text Toolkit',     subtitle: 'Thirty-four ways to mangle, massage and mine raw text', icon: 'fa-font' },
     'users':              { title: 'Fiefdom Registry',       tabLabel: 'Manage Users',     subtitle: 'Administering the plebeian access roster', icon: 'fa-users' },
 };
 
@@ -280,6 +282,8 @@ function dispatchRender(view) {
     else if (view === 'dns-lookup')         renderDnsLookup();
     else if (view === 'password-generator') renderPasswordGenerator();
     else if (view === 'ssl-toolkit')        renderSslToolkit();
+    else if (view === 'email-deliverability') renderEmailDeliverabilityTester();
+    else if (view === 'text-toolkit')       renderTextToolkit();
     else if (view === 'users')              renderUserManagement();
 }
 
@@ -512,6 +516,20 @@ async function renderDashboard() {
                 desc: 'Check certificates, chains, TLS versions & HSTS',
                 color: '#34d399',
             },
+            {
+                key: 'email-deliverability',
+                icon: 'fa-paper-plane',
+                name: 'Email Tester',
+                desc: 'Test email authentication, headers, content, and deliverability signals',
+                color: '#f97316',
+            },
+            {
+                key: 'text-toolkit',
+                icon: 'fa-font',
+                name: 'Text Toolkit',
+                desc: 'Transform, clean, extract, format, encode, and analyze text.',
+                color: '#eab308',
+            },
         ];
 
         const crmLinks = [
@@ -677,10 +695,244 @@ async function renderDashboard() {
         document.querySelectorAll('.dash-tool[data-nav]').forEach(card => {
             card.addEventListener('click', () => navigate(card.dataset.nav));
         });
+
+        spMount(body, activeTools, crmLinks, externalTools);
     } catch (err) {
         body.innerHTML = `<div class="empty-state"><i class="fas fa-exclamation-triangle"></i><h3>Failed to load dashboard</h3><p>${err.message}</p></div>`;
     }
 }
+
+// ============================================
+// Dashboard Spotlight Search (Ctrl/Cmd+F)
+// ============================================
+let spItems = [];
+let spOpenState = false;
+let spFlat = [];
+let spSel = 0;
+
+function spIsDashboardActive() {
+    const tab = tabState.tabs.find(t => t.id === tabState.activeTab);
+    return !!tab && tab.view === 'dashboard';
+}
+
+function spMount(body, tools, crm, ext) {
+    const keywords = {
+        'commands': 'terminal shell bash linux console',
+        'email-anonymizer': 'privacy hide alias anonymize',
+        'email-header-viz': 'smtp forensic headers trace',
+        'snippets': 'templates replies canned responses',
+        'ip-reputation': 'abuse blocklist spam blacklist geoip security',
+        'dns-lookup': 'nameserver mx txt spf dkim dmarc domain records',
+        'rte-editor': 'wysiwyg documents write rich text',
+        'password-generator': 'random secure entropy generate',
+        'ssl-toolkit': 'certificate tls https chain expiry hsts',
+        'email-deliverability': 'spf dkim dmarc score mail test deliverability',
+        'text-toolkit': 'string case convert encode decode base64 regex extract analyze word count slug json csv statistics',
+    };
+
+    const host = u => { try { return new URL(u).hostname.replace(/^www\./, ''); } catch (e) { return u; } };
+
+    spItems = [
+        ...tools.map(t => ({
+            group: 'Tools', name: t.name, sub: t.desc, icon: t.icon, color: t.color,
+            action: () => navigate(t.key),
+            hay: `${t.name} ${t.desc} ${keywords[t.key] || ''}`.toLowerCase(),
+        })),
+        {
+            group: 'Tools', name: 'Manage Users', sub: 'Administering the plebeian access roster',
+            icon: 'fa-users', color: '#f59e0b', action: () => navigate('users'),
+            hay: 'manage users accounts admin registry'.toLowerCase(),
+        },
+        ...crm.flatMap(c => [
+            {
+                group: 'CRM & Provider Links', name: c.name, sub: host(c.url),
+                initials: c.initials, icon: c.icon, color: c.color,
+                action: () => window.open(c.url, '_blank', 'noopener'),
+                hay: `${c.name} crm provider hosting panel`.toLowerCase(),
+            },
+            ...(c.children || []).map(ch => ({
+                group: 'CRM & Provider Links', name: ch.name, sub: `${c.name} \u2014 ${host(ch.url)}`,
+                icon: ch.icon, color: c.color,
+                action: () => window.open(ch.url, '_blank', 'noopener'),
+                hay: `${ch.name} ${c.name}`.toLowerCase(),
+            })),
+        ]),
+        ...ext.map(x => ({
+            group: 'External Tools', name: x.name, sub: host(x.url),
+            initials: x.initials, icon: x.icon, color: x.color,
+            action: () => window.open(x.url, '_blank', 'noopener'),
+            hay: `${x.name} external tool`.toLowerCase(),
+        })),
+    ];
+
+    let backdrop = body.querySelector('.sp-backdrop');
+    if (backdrop) return;
+    body.insertAdjacentHTML('beforeend', `
+        <div class="sp-backdrop">
+            <div class="sp-panel" role="dialog" aria-label="Dashboard search">
+                <div class="sp-input-row">
+                    <i class="fas fa-magnifying-glass"></i>
+                    <input type="text" class="sp-input" placeholder="Search tools, links, everything\u2026" autocomplete="off" spellcheck="false">
+                    <kbd class="sp-kbd">esc</kbd>
+                </div>
+                <div class="sp-results"></div>
+                <div class="sp-footer">
+                    <span><kbd class="sp-kbd">\u2191</kbd><kbd class="sp-kbd">\u2193</kbd> navigate</span>
+                    <span><kbd class="sp-kbd">\u21b5</kbd> open</span>
+                    <span><kbd class="sp-kbd">esc</kbd> close</span>
+                </div>
+            </div>
+        </div>
+    `);
+    backdrop = body.querySelector('.sp-backdrop');
+
+    backdrop.addEventListener('mousedown', e => {
+        if (e.target === backdrop) spClose();
+    });
+
+    const resultsEl = backdrop.querySelector('.sp-results');
+    resultsEl.addEventListener('mouseover', e => {
+        const item = e.target.closest('.sp-item');
+        if (item && +item.dataset.sp !== spSel) spSelect(+item.dataset.sp, false);
+    });
+    resultsEl.addEventListener('click', e => {
+        const item = e.target.closest('.sp-item');
+        if (item) spActivate(+item.dataset.sp);
+    });
+    backdrop.querySelector('.sp-input').addEventListener('input', e => {
+        spRender(backdrop, e.target.value);
+    });
+}
+
+function spScore(nameLc, hayLc, q) {
+    if (nameLc.startsWith(q)) return 30;
+    if (nameLc.includes(q)) return 20;
+    if (new RegExp(`\\b${q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`).test(hayLc)) return 12;
+    if (hayLc.includes(q)) return 8;
+    return 0;
+}
+
+function spHi(text, q) {
+    if (!q) return escHtml(text);
+    const idx = text.toLowerCase().indexOf(q);
+    if (idx === -1) return escHtml(text);
+    return escHtml(text.slice(0, idx))
+        + '<mark>' + escHtml(text.slice(idx, idx + q.length)) + '</mark>'
+        + escHtml(text.slice(idx + q.length));
+}
+
+function spRender(backdrop, query) {
+    const resultsEl = backdrop.querySelector('.sp-results');
+    const q = query.trim().toLowerCase();
+    let list;
+
+    if (!q) {
+        list = spItems.filter(i => i.group === 'Tools').slice(0, 8);
+    } else {
+        list = spItems
+            .map(i => ({ i, s: spScore(i.name.toLowerCase(), i.hay, q) }))
+            .filter(x => x.s > 0)
+            .sort((a, b) => b.s - a.s)
+            .slice(0, 12)
+            .map(x => x.i);
+    }
+
+    spFlat = list;
+    spSel = 0;
+
+    if (!list.length) {
+        resultsEl.innerHTML = `<div class="sp-empty"><i class="fas fa-magnifying-glass"></i><p>No results for \u201c${escHtml(query.trim())}\u201d</p></div>`;
+        return;
+    }
+
+    let html = '';
+    let lastGroup = null;
+    list.forEach((item, idx) => {
+        if (item.group !== lastGroup) {
+            html += `<div class="sp-group-label">${q ? item.group : 'Suggestions'}</div>`;
+            lastGroup = item.group;
+        }
+        const iconInner = item.icon
+            ? `<i class="fas ${item.icon}"></i>`
+            : `<span class="sp-initials">${escHtml(item.initials)}</span>`;
+        html += `
+            <div class="sp-item ${idx === 0 ? 'sel' : ''}" data-sp="${idx}">
+                <div class="sp-icon" style="background:${item.color}18;color:${item.color}">${iconInner}</div>
+                <div class="sp-item-text">
+                    <span class="sp-item-name">${spHi(item.name, q)}</span>
+                    <span class="sp-item-sub">${escHtml(item.sub || '')}</span>
+                </div>
+                <i class="fas fa-arrow-right sp-item-go"></i>
+            </div>
+        `;
+    });
+    resultsEl.innerHTML = html;
+}
+
+function spSelect(idx, scroll = true) {
+    const resultsEl = document.querySelector('.tab-panel.active .sp-results');
+    if (!resultsEl) return;
+    spSel = idx;
+    resultsEl.querySelectorAll('.sp-item').forEach(el => {
+        el.classList.toggle('sel', +el.dataset.sp === idx);
+    });
+    if (scroll) {
+        const el = resultsEl.querySelector(`.sp-item[data-sp="${idx}"]`);
+        if (el) el.scrollIntoView({ block: 'nearest' });
+    }
+}
+
+function spMove(delta) {
+    if (!spFlat.length) return;
+    spSelect((spSel + delta + spFlat.length) % spFlat.length);
+}
+
+function spActivate(idx) {
+    const item = spFlat[idx];
+    if (!item) return;
+    spClose();
+    item.action();
+}
+
+function spOpenModal() {
+    const backdrop = document.querySelector('.tab-panel.active .sp-backdrop');
+    if (!backdrop) return;
+    spOpenState = true;
+    backdrop.classList.add('open');
+    const input = backdrop.querySelector('.sp-input');
+    input.value = '';
+    spRender(backdrop, '');
+    setTimeout(() => input.focus(), 40);
+}
+
+function spClose() {
+    const backdrop = document.querySelector('.tab-panel.active .sp-backdrop');
+    if (backdrop) backdrop.classList.remove('open');
+    spOpenState = false;
+}
+
+document.addEventListener('keydown', e => {
+    if ((e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey && e.key.toLowerCase() === 'f') {
+        if (!spIsDashboardActive()) return;
+        e.preventDefault();
+        if (spOpenState) spClose(); else spOpenModal();
+        return;
+    }
+    if (!spOpenState) return;
+    if (e.key === 'Escape') {
+        e.preventDefault();
+        spClose();
+    } else if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        spMove(1);
+    } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        spMove(-1);
+    } else if (e.key === 'Enter') {
+        e.preventDefault();
+        spActivate(spSel);
+    }
+});
 
 // ============================================
 // Command Hub

@@ -71,6 +71,28 @@ CREATE TABLE IF NOT EXISTS snippets (
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
 ) ENGINE=InnoDB;
 
+-- Email Deliverability Tester
+CREATE TABLE IF NOT EXISTS email_tests (
+    id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    user_id INT UNSIGNED NOT NULL,
+    test_token VARCHAR(32) NOT NULL UNIQUE,
+    email_address VARCHAR(255) NOT NULL,
+    status ENUM('waiting','received','analyzing','complete','expired','error') NOT NULL DEFAULT 'waiting',
+    raw_message LONGTEXT DEFAULT NULL,
+    message_size INT UNSIGNED DEFAULT NULL,
+    analysis_result JSON DEFAULT NULL,
+    score INT UNSIGNED DEFAULT NULL,
+    expires_at DATETIME NOT NULL,
+    received_at DATETIME DEFAULT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX idx_email_tests_token (test_token),
+    INDEX idx_email_tests_user (user_id),
+    INDEX idx_email_tests_expires (expires_at),
+    INDEX idx_email_tests_status (status),
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB;
+
 -- IP Reputation cache
 CREATE TABLE IF NOT EXISTS ip_cache (
     ip VARCHAR(45) NOT NULL,

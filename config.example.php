@@ -25,3 +25,8 @@ date_default_timezone_set('UTC');
 define('ABUSEIPDB_KEY', '');
 // Get VirusTotal key: https://www.virustotal.com/gui/join-us
 define('VIRUSTOTAL_KEY', '');
+
+// Email Deliverability Tester
+// The domain used for generating test email addresses (e.g., test.yourdomain.com)
+// Configure your mail server to deliver emails sent to *@EMAIL_TEST_DOMAIN to the Ficksie receive endpoint.
+define('EMAIL_TEST_DOMAIN', '');
