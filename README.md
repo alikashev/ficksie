@@ -7,7 +7,7 @@ No build tools, no Node.js, no framework dependencies. Just upload and go.
 ## Features
 
 - **Authentication** — Secure login/register system with bcrypt passwords, session management, and admin user management.
-- **Command Hub** — Store, organize, and copy Linux commands. Group them by category with color-coded badges.
+- **Command Hub** — Store, organize, and copy Linux commands (quotes and multi-line commands copy fully). Group them by category with color-coded badges. Compact 3-column card grid (2 below 1400px, 1 on mobile) with per-row equal heights, descriptions shown above scrollable two-line command previews, plus live search and category filtering.
 - **Snippets** — Save standard email responses and copy them as plain text with whitespace preserved.
 - **Email Anonymizer** — Instantly mask email addresses (preserves first character and TLD).
 - **Email Header Visualizer** — Parse and analyze email headers for forensic traces.
@@ -353,6 +353,10 @@ The dashboard includes:
 ### Frontend Caching
 - Static assets use `?v=N` cache busters in `index.php` — bump the version number when modifying JS or CSS
 - When behind Cloudflare, query-string cache busters are essential for busting the CDN cache
+
+### Frontend Security Notes
+- All user-supplied content is rendered through `escHtml()` before insertion into HTML templates
+- Never embed dynamic text (commands, snippets) in HTML `data-*` attributes for later retrieval — `escHtml()` does not escape double quotes, so values containing quotes break the attribute and get truncated. Instead, tag elements with an ID and look the value up from JS state (e.g. `state.commands.find(c => c.id == btn.dataset.id)`)
 
 ## Adding a Tool
 

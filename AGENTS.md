@@ -18,6 +18,7 @@ Ficksie is a PHP 8+ / MySQL / vanilla JS single-page application (SPA) offering 
 - **All API responses** use ` jsonResponse()` helper
 - **All input sanitized** — use `Database::getInstance()->sanitize()`
 - **No eval, no innerHTML with raw user data** — use `escHtml()` for all output
+- **Never embed dynamic text in `data-*` attributes** — `escHtml()` does not escape double quotes; values with quotes break/truncate. Tag elements with an ID and look values up from `state` instead
 
 ## Environment
 - **Server**: DirectAdmin on CentOS 8
@@ -63,7 +64,7 @@ All parser bugs fixed, analyzer overhauled with professional-grade scoring, pipe
 - `api/index.php` — router with `email-test` + `email-test-receive` routes
 - `assets/js/email-tester.js` — frontend JS (v2)
 - `assets/js/app.js` — viewMeta, tools array, dispatchRender, `escHtml()`, `getActiveBody()`
-- `assets/css/style.css` — all styles (v103)
+- `assets/css/style.css` — all styles (v116)
 - `index.php` — sidebar nav, cache bust, script tags
 - Exim config files in `/etc/exim.*.pre.conf`
 
@@ -74,9 +75,9 @@ All parser bugs fixed, analyzer overhauled with professional-grade scoring, pipe
 - After analyzer overhaul (alignment/PTR/TLS): professional-grade scoring matching tools like mail-tester.com
 
 ### Cache Busting (current versions)
-- CSS: `v=105`
+- CSS: `v=116`
 - JS email-tester: `v=7`
-- app.js: `v=117`
+- app.js: `v=122`
 
 ## Testing Checklist
 - [ ] End-to-end: send email from Outlook → verify full pipeline (Exim → pipe script → analyzer → frontend shows score with recommendations)

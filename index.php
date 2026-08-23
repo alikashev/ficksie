@@ -22,7 +22,7 @@ $appName = APP_NAME;
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=VT323&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-    <link rel="stylesheet" href="assets/css/style.css?v=110">
+    <link rel="stylesheet" href="assets/css/style.css?v=116">
 </head>
 <body>
     <div id="app">
@@ -109,7 +109,7 @@ $appName = APP_NAME;
             </nav>
 
             <div class="sidebar-footer">
-                <div class="version-badge">v1.0.0</div>
+                <div class="version-badge">v1.1.2</div>
                 <button class="btn btn-ghost btn-sm" id="logoutBtn" title="Sign out">
                     <i class="fas fa-sign-out-alt"></i>
                     <span>Sign out</span>
@@ -340,6 +340,6 @@ $appName = APP_NAME;
     <script src="assets/js/email-tester.js?v=7"></script>
     <script src="assets/js/text-toolkit.js?v=2"></script>
 
-    <script src="assets/js/app.js?v=120"></script>
+    <script src="assets/js/app.js?v=122"></script>
 </body>
 </html>

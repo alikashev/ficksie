@@ -970,7 +970,7 @@ async function renderCommands() {
                 <div class="toolbar-filter-row">
                     <select class="filter-select" id="categoryFilter">
                         <option value="">All Categories</option>
-                        ${categories.map(c => `<option value="${c.id}">${c.name}</option>`).join('')}
+                        ${categories.map(c => `<option value="${c.id}">${escHtml(c.name)}</option>`).join('')}
                     </select>
                     ${admin ? `<button class="btn btn-secondary" id="manageCategoriesBtn">
                         <i class="fas fa-tags"></i> Manage
@@ -1018,11 +1018,11 @@ function renderCommandCards(commands) {
                     </span>
                 </div>
                 <div class="command-card-body">
-                    <div class="command-preview">${escHtml(cmd.command)}</div>
                     ${desc}
+                    <div class="command-preview">${escHtml(cmd.command)}</div>
                 </div>
                 <div class="command-card-actions">
-                    <button class="btn btn-copy copy-command" data-command="${escHtml(cmd.command)}">
+                    <button class="btn btn-copy copy-command" data-id="${cmd.id}">
                         <i class="fas fa-copy"></i> Copy
                     </button>
                     ${admin ? `
@@ -1103,7 +1103,11 @@ function filterCommands() {
 
 function attachCommandCardEvents() {
     document.querySelectorAll('.copy-command').forEach(btn => {
-        btn.addEventListener('click', () => copyCommand(btn, btn.dataset.command));
+        btn.addEventListener('click', () => {
+            const cmd = state.commands.find(c => c.id == btn.dataset.id);
+            if (cmd) copyCommand(btn, cmd.command);
+            else toast('Command not found', 'error');
+        });
     });
 
     document.querySelectorAll('.edit-command').forEach(btn => {
@@ -2565,7 +2569,11 @@ async function renderSnippets() {
             const q = e.target.value.toLowerCase();
             const cards = document.querySelectorAll('.snippet-card');
             cards.forEach(card => {
-                const match = card.dataset.title.toLowerCase().includes(q) || card.dataset.content.toLowerCase().includes(q);
+                const s = snippets.find(x => x.id == card.dataset.id);
+                const match = s && (
+                    (s.title || '').toLowerCase().includes(q) ||
+                    (s.content || '').toLowerCase().includes(q)
+                );
                 card.style.display = match ? '' : 'none';
             });
         });
@@ -2615,7 +2623,7 @@ function renderSnippetCards(snippets) {
     const admin = isAdmin();
 
     return snippets.map(s => `
-        <div class="snippet-card" data-id="${s.id}" data-title="${escHtml(s.title).toLowerCase()}" data-content="${escHtml(s.content).toLowerCase()}">
+        <div class="snippet-card" data-id="${s.id}">
             <div class="snippet-card-head">
                 <h3 class="snippet-title">${escHtml(s.title)}</h3>
                 <span class="snippet-date">${new Date(s.updated_at).toLocaleDateString()}</span>
@@ -4836,18 +4844,20 @@ function rteRenderTemplates() {
         return;
     }
 
-    container.innerHTML = templates.map(t => `
-        <button class="rte-template-btn" data-tpl="${escHtml(t.name)}">
+    container.innerHTML = templates.map((t, i) => `
+        <button class="rte-template-btn" data-idx="${i}">
             <i class="fas fa-reply"></i> ${escHtml(t.name)}
         </button>
     `).join('');
 
     container.querySelectorAll('.rte-template-btn').forEach(btn => {
-        btn.addEventListener('click', () => rteInsertTemplate(btn.dataset.tpl));
+        const tpl = templates[parseInt(btn.dataset.idx, 10)];
+        if (!tpl) return;
+        btn.addEventListener('click', () => rteInsertTemplate(tpl.name));
         btn.addEventListener('contextmenu', (e) => {
             e.preventDefault();
-            if (confirm(`Delete template "${btn.dataset.tpl}"?`)) {
-                rteDeleteTemplate(btn.dataset.tpl);
+            if (confirm(`Delete template "${tpl.name}"?`)) {
+                rteDeleteTemplate(tpl.name);
             }
         });
     });
