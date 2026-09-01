@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ho ho ho... geen toegang 😤</title>
+<style>
+    * {
+        box-sizing: border-box;
+    }
+    body {
+        margin: 0;
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        background:
+            radial-gradient(circle at 20% 20%, #34344f 0, transparent 30%),
+            radial-gradient(circle at 80% 80%, #432b3b 0, transparent 30%),
+            #17171f;
+        color: #fff;
+        overflow: hidden;
+    }
+    .card {
+        width: min(680px, calc(100% - 32px));
+        padding: 42px 30px;
+        text-align: center;
+        background: rgba(255,255,255,.07);
+        border: 1px solid rgba(255,255,255,.12);
+        border-radius: 28px;
+        box-shadow: 0 25px 80px rgba(0,0,0,.45);
+        backdrop-filter: blur(14px);
+    }
+    .guard {
+        width: 220px;
+        max-width: 70%;
+        margin: 0 auto 10px;
+        animation: float 3s ease-in-out infinite;
+    }
+    @keyframes float {
+        0%, 100% { transform: translateY(0) rotate(-1deg); }
+        50% { transform: translateY(-10px) rotate(1deg); }
+    }
+    h1 {
+        margin: 8px 0 12px;
+        font-size: clamp(2rem, 7vw, 3.5rem);
+        line-height: 1;
+    }
+    .subtitle {
+        margin: 0 auto;
+        max-width: 520px;
+        color: #c9c9d5;
+        font-size: 1.1rem;
+        line-height: 1.7;
+    }
+    .angry {
+        display: inline-block;
+        margin-top: 24px;
+        padding: 10px 18px;
+        border-radius: 999px;
+        background: #ff4757;
+        font-weight: 800;
+        transform: rotate(-2deg);
+    }
+    .small {
+        margin-top: 24px;
+        color: #777789;
+        font-size: .9rem;
+    }
+    .eyes {
+        animation: blink 4s infinite;
+        transform-origin: center;
+    }
+    @keyframes blink {
+        0%, 45%, 48%, 100% { transform: scaleY(1); }
+        46%, 47% { transform: scaleY(.1); }
+    }
+</style>
+</head>
+<body>
+    <main class="card">
+    <svg class="guard" viewBox="0 0 300 260" role="img" aria-label="Boze bewaker">
+        <!-- lichaam -->
+        <path d="M70 245 C75 175 95 145 150 145 C205 145 225 175 230 245Z"
+              fill="#596275"/>
+        <!-- hoofd -->
+        <circle cx="150" cy="105" r="68" fill="#ffd3a6"/>
+        <!-- haar -->
+        <path d="M84 96 C80 35 115 18 151 25 C194 15 225 48 216 98
+                 C199 70 178 62 151 63 C122 61 102 73 84 96Z"
+              fill="#282c34"/>
+        <!-- oren -->
+        <circle cx="83" cy="108" r="15" fill="#ffc28e"/>
+        <circle cx="217" cy="108" r="15" fill="#ffc28e"/>
+        <!-- wenkbrauwen -->
+        <path d="M105 92 L135 101" stroke="#282c34" stroke-width="10" stroke-linecap="round"/>
+        <path d="M195 92 L165 101" stroke="#282c34" stroke-width="10" stroke-linecap="round"/>
+        <!-- ogen -->
+        <g class="eyes">
+            <circle cx="122" cy="112" r="7" fill="#15151b"/>
+            <circle cx="178" cy="112" r="7" fill="#15151b"/>
+        </g>
+        <!-- boze mond -->
+        <path d="M120 145 Q150 125 180 145"
+              fill="none" stroke="#15151b" stroke-width="8" stroke-linecap="round"/>
+        <!-- stropdas -->
+        <path d="M140 155 L160 155 L170 235 L150 248 L130 235Z"
+              fill="#ff4757"/>
+        <!-- armen -->
+        <path d="M80 180 L35 220" stroke="#596275" stroke-width="24" stroke-linecap="round"/>
+        <path d="M220 180 L265 220" stroke="#596275" stroke-width="24" stroke-linecap="round"/>
+        <!-- bord -->
+        <rect x="85" y="202" width="130" height="38" rx="12"
+              fill="#f1f2f6"/>
+        <text x="150" y="227"
+              text-anchor="middle"
+              font-size="17"
+              font-weight="800"
+              fill="#17171f">GEEN TOEGANG</text>
+    </svg>
+    <div class="angry">403 — HO. STOP. NEE. 😤</div>
+    <h1>Je mag hier niet naar binnen.</h1>
+    <p class="subtitle">
+        Sorry hoor, maar deze digitale deur heeft besloten dat jij vandaag
+        niet op de gastenlijst staat.
+        <br><br>
+        Ik heb het nog even nagekeken. Nog een keer gekeken.
+        Zelfs onder de mat gekeken. Maar nee.
+        <strong>Geen toegang.</strong>
+    </p>
+    <p class="small">
+        Misschien ben je vergeten je VIP-bandje mee te nemen.
+        Of misschien vindt de server je gewoon verdacht. 🤨
+    </p>
+</main>
+</body>
+</html>

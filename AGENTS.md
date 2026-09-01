@@ -37,6 +37,8 @@ Ficksie is a PHP 8+ / MySQL / vanilla JS single-page application (SPA) offering 
 - Exim router includes `.include_if_exists /etc/exim.routers.pre.conf`
 - Exim transport includes `.include_if_exists /etc/exim.transports.pre.conf`
 - Exim daemon must be restarted (`systemctl restart exim`) after config file changes
+- **DNS tool caching is DISABLED** — `dnsCacheGet()` in `api/dns.php` always returns null and `dnsCacheSet()` is a no-op. DNS/WHOIS data is always fetched live for every domain (per user requirement). The `dns_cache` table still exists but is unused; `dnsCacheClear()` remains for cleanup.
+- **DNSSEC detection** — `checkDnssec()` runs in both full and quick modes and queries DNSKEY (48) + DS (43) via Cloudflare DoH (`queryDohRaw()`), because `dns_get_record` cannot see DNSKEY on Cloudflare-fronted domains (they answer ANY with HINFO). A zone is reported as DNSSEC-enabled when either DNSKEY or DS records are found. The WHOIS override regex also recognizes `signedDelegation`/`delegationSigned` values from RDAP.
 
 ## Email Deliverability Tester (Current Feature)
 

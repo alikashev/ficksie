@@ -303,19 +303,13 @@ $domain = strtolower($domain);
 // ─── Cache Helpers ───────────────────────────────────────────────────────────
 function dnsCacheGet(string $domain, string $type): ?array
 {
-    $row = Database::fetchOne(
-        'SELECT data FROM dns_cache WHERE domain = ? AND type = ? AND created_at > DATE_SUB(NOW(), INTERVAL ? SECOND)',
-        [$domain, $type, DNS_CACHE_TTL]
-    );
-    return $row ? json_decode($row['data'], true) : null;
+    // Caching is intentionally disabled — DNS/WHOIS data is always fetched live.
+    return null;
 }
 
 function dnsCacheSet(string $domain, string $type, array $data): void
 {
-    Database::execute(
-        'REPLACE INTO dns_cache (domain, type, data, created_at) VALUES (?, ?, ?, NOW())',
-        [$domain, $type, json_encode($data)]
-    );
+    // Caching is intentionally disabled — no-op.
 }
 
 function dnsCacheClear(string $domain): void
@@ -393,6 +387,39 @@ function dnsQueryDoh(string $domain, string $type = 'NS'): array
         $records[] = $entry;
     }
     return $records;
+}
+
+/**
+ * Query a raw DNS record type via Cloudflare DoH (used for synthetic types like
+ * DS (43) and DNSKEY (48) that dns_get_record can't always return).
+ * Returns the raw RData strings (e.g. DS / DNSKEY RDATA lines).
+ */
+function queryDohRaw(string $domain, int $wireType): array
+{
+    $dohUrl = 'https://cloudflare-dns.com/dns-query?name=' . urlencode($domain) . '&type=' . $wireType;
+    $ch = @curl_init($dohUrl);
+    if (!$ch) return [];
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_HTTPHEADER    => ['Accept: application/dns-json'],
+        CURLOPT_TIMEOUT       => 5,
+        CURLOPT_SSL_VERIFYPEER => false,
+    ]);
+    $response = @curl_exec($ch);
+    $httpCode = @curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    @curl_close($ch);
+    if (!$response || $httpCode !== 200) return [];
+
+    $data = @json_decode($response, true);
+    if (!isset($data['Answer']) || !is_array($data['Answer'])) return [];
+
+    $out = [];
+    foreach ($data['Answer'] as $a) {
+        if (($a['type'] ?? 0) === $wireType && !empty($a['data'])) {
+            $out[] = $a['data'];
+        }
+    }
+    return $out;
 }
 
 function digQuery(string $domain, string $type): ?array
@@ -1576,16 +1603,25 @@ function checkDnssec(string $domain): array
         'status' => 'disabled',
     ];
 
-    // Check DNSKEY records (direct query to the domain)
+    // DNSKEY — query both the local resolver AND Cloudflare DoH. Cloudflare-fronted
+    // domains return HINFO for ANY queries, so dns_get_record alone can't see DNSKEY.
     $allRecords = @dns_get_record($domain, DNS_ANY);
     $dnskeyRecs = array_filter($allRecords ?? [], fn($r) => ($r['type'] ?? '') === 'DNSKEY');
-    if (is_array($dnskeyRecs) && count($dnskeyRecs) > 0) {
-        $result['dnskey_records'] = $dnskeyRecs;
+    foreach ($dnskeyRecs as $r) {
+        $result['dnskey_records'][] = $r;
+    }
+    // DoH DNSKEY (authoritative for the zone's signing status)
+    foreach (queryDohRaw($domain, 48) as $rdata) {
+        if (!in_array($rdata, $result['dnskey_records'])) {
+            $result['dnskey_records'][] = $rdata;
+        }
+    }
+    if (count($result['dnskey_records']) > 0) {
         $result['enabled'] = true;
         $result['status'] = 'ok';
     }
 
-    // Check RRSIG (using ANY query)
+    // RRSIG (via ANY query) — informational only
     $allRecs = @dns_get_record($domain, DNS_ANY);
     if (is_array($allRecs)) {
         foreach ($allRecs as $r) {
@@ -1595,35 +1631,15 @@ function checkDnssec(string $domain): array
         }
     }
 
-    // Check for DS records by querying the parent zone via Cloudflare DNS-over-HTTPS.
-    // DS records live in the parent TLD zone and may not be returned by direct query to the domain.
-    $dohUrl = 'https://cloudflare-dns.com/dns-query?name=' . urlencode($domain) . '&type=DS';
-    $ch = @curl_init();
-    if ($ch) {
-        @curl_setopt_array($ch, [
-            CURLOPT_URL => $dohUrl,
-            CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_HTTPHEADER => ['Accept: application/dns-json'],
-            CURLOPT_TIMEOUT => 5,
-            CURLOPT_SSL_VERIFYPEER => false,
-        ]);
-        $dohResponse = @curl_exec($ch);
-        $httpCode = @curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        @curl_close($ch);
-        if ($dohResponse && $httpCode === 200) {
-            $dohData = @json_decode($dohResponse, true);
-            if (isset($dohData['Answer']) && is_array($dohData['Answer'])) {
-                foreach ($dohData['Answer'] as $answer) {
-                    if (($answer['type'] ?? 0) === 43 && !empty($answer['data'])) {
-                        $result['ds_records'][] = $answer['data'];
-                    }
-                }
-                if (!empty($result['ds_records'])) {
-                    $result['enabled'] = true;
-                    $result['status'] = 'ok';
-                }
-            }
+    // DS records live in the parent TLD zone — query via Cloudflare DoH.
+    foreach (queryDohRaw($domain, 43) as $rdata) {
+        if (!in_array($rdata, $result['ds_records'])) {
+            $result['ds_records'][] = $rdata;
         }
+    }
+    if (count($result['ds_records']) > 0) {
+        $result['enabled'] = true;
+        $result['status'] = 'ok';
     }
 
     if ($result['enabled'] && count($result['ds_records']) > 0 && count($result['dnskey_records']) > 0) {
@@ -1819,6 +1835,8 @@ function parseRdapResponse(array $data): array
 {
     $result = [
         'registrar' => null,
+        'reseller' => null,
+        'reseller_organization' => null,
         'creation_date' => null,
         'expiration_date' => null,
         'updated_date' => null,
@@ -1874,12 +1892,13 @@ function parseRdapResponse(array $data): array
         }
     }
 
-    // Entities: registrar, admin, tech, abuse
+    // Entities: registrar, reseller, admin, tech, abuse
     foreach ($data['entities'] ?? [] as $ent) {
         $roles = $ent['roles'] ?? [];
         $vcard = $ent['vcardArray'][1] ?? [];
 
         $fn = '';
+        $org = '';
         $email = '';
         $adr = null;
         foreach ($vcard as $vc) {
@@ -1887,16 +1906,22 @@ function parseRdapResponse(array $data): array
             $key = $vc[0];
             $val = $vc[3] ?? '';
             if ($key === 'fn' && is_string($val)) $fn = $val;
+            if ($key === 'org' && is_string($val)) $org = $val;
             if ($key === 'email' && is_string($val)) $email = $val;
             if ($key === 'adr' && is_array($val)) $adr = $val;
         }
 
         // Skip redacted values
         if ($fn && stripos($fn, 'redact') !== false) $fn = '';
+        if ($org && stripos($org, 'redact') !== false) $org = '';
         if ($email && stripos($email, 'redact') !== false) $email = '';
 
         if (in_array('registrar', $roles)) {
             if ($fn) $result['registrar'] = $fn;
+        }
+        if (in_array('reseller', $roles)) {
+            if ($fn && !$result['reseller']) $result['reseller'] = $fn;
+            if ($org && !$result['reseller_organization']) $result['reseller_organization'] = $org;
         }
         if (in_array('administrative', $roles) || in_array('registrant', $roles)) {
             if ($fn && !$result['registrant_name']) $result['registrant_name'] = $fn;
@@ -1919,16 +1944,23 @@ function parseRdapResponse(array $data): array
             $subRoles = $sub['roles'] ?? [];
             $subVcard = $sub['vcardArray'][1] ?? [];
             $subFn = '';
+            $subOrg = '';
             $subEmail = '';
             foreach ($subVcard as $vc) {
                 if (!is_array($vc) || count($vc) < 4) continue;
                 if ($vc[0] === 'fn' && is_string($vc[3])) $subFn = $vc[3];
+                if ($vc[0] === 'org' && is_string($vc[3])) $subOrg = $vc[3];
                 if ($vc[0] === 'email' && is_string($vc[3])) $subEmail = $vc[3];
             }
             if ($subFn && stripos($subFn, 'redact') !== false) $subFn = '';
+            if ($subOrg && stripos($subOrg, 'redact') !== false) $subOrg = '';
             if ($subEmail && stripos($subEmail, 'redact') !== false) $subEmail = '';
             if (in_array('abuse', $subRoles)) {
                 if ($subEmail && !$result['abuse_email']) $result['abuse_email'] = $subEmail;
+            }
+            if (in_array('reseller', $subRoles)) {
+                if ($subFn && !$result['reseller']) $result['reseller'] = $subFn;
+                if ($subOrg && !$result['reseller_organization']) $result['reseller_organization'] = $subOrg;
             }
         }
     }
@@ -2075,6 +2107,8 @@ function parseWhoisRaw(string $raw): array
 {
     $result = [
         'registrar' => null,
+        'reseller' => null,
+        'reseller_organization' => null,
         'creation_date' => null,
         'expiration_date' => null,
         'updated_date' => null,
@@ -2172,6 +2206,16 @@ function parseWhoisRaw(string $raw): array
 
         if (preg_match('/^(?:Registrar|Sponsoring Registrar):\s*(.+)$/i', $trimmed, $m)) {
             if (!$result['registrar']) $result['registrar'] = trim($m[1]);
+        } elseif (preg_match('/^(?:Sponsoring Reseller|Registrar Reseller|Reseller):\s*(.+)$/i', $trimmed, $m)) {
+            $v = trim($m[1]);
+            if ($v && stripos($v, 'redact') === false) {
+                if (!$result['reseller']) $result['reseller'] = $v;
+            }
+        } elseif (preg_match('/^(?:Reseller\s+Organization|Reseller\s+Name):\s*(.+)$/i', $trimmed, $m)) {
+            $v = trim($m[1]);
+            if ($v && stripos($v, 'redact') === false) {
+                if (!$result['reseller_organization']) $result['reseller_organization'] = $v;
+            }
         } elseif (preg_match('/^(?:Creation Date|Created|Registration Date|Registered|created):\s*(.+)$/i', $trimmed, $m)) {
             if (!$result['creation_date']) $result['creation_date'] = trim($m[1]);
         } elseif (preg_match('/^(?:Registry Expiry Date|Expiration Date|Expiry Date|Valid Until|paid-till|expires?):\s*(.+)$/i', $trimmed, $m)) {
@@ -2342,7 +2386,8 @@ function whoisLookup(string $domain): array
         $dbResult = queryDnsBelgiumApi($domain);
         if ($dbResult) {
             $emptyResult = [
-                'registrar' => null, 'creation_date' => null, 'expiration_date' => null,
+                'registrar' => null, 'reseller' => null, 'reseller_organization' => null,
+                'creation_date' => null, 'expiration_date' => null,
                 'updated_date' => null, 'name_servers' => [], 'registrant_name' => null,
                 'registrant_organization' => null, 'registrant_country' => null,
                 'registrant_state' => null, 'registrant_city' => null, 'tech_name' => null,
@@ -2364,7 +2409,8 @@ function whoisLookup(string $domain): array
     // Use who.is HTTP scraping which embeds raw WHOIS data in the page
     if ($tld === 'eu') {
         $euResult = [
-            'registrar' => null, 'creation_date' => null, 'expiration_date' => null,
+            'registrar' => null, 'reseller' => null, 'reseller_organization' => null,
+            'creation_date' => null, 'expiration_date' => null,
             'updated_date' => null, 'name_servers' => [], 'registrant_name' => null,
             'registrant_organization' => null, 'registrant_country' => null,
             'registrant_state' => null, 'registrant_city' => null, 'tech_name' => null,
@@ -2391,6 +2437,8 @@ function whoisLookup(string $domain): array
 
     $emptyResult = [
         'registrar' => null,
+        'reseller' => null,
+        'reseller_organization' => null,
         'creation_date' => null,
         'expiration_date' => null,
         'updated_date' => null,
@@ -2793,7 +2841,11 @@ if (!$quickMode) {
         $result['dot'] = ['status' => 'error', 'error' => $e->getMessage()];
     }
 } else {
-    $result['dnssec'] = ['status' => 'skipped', 'enabled' => false];
+    // DNSSEC is always checked (even in quick mode) — it's cheap and ensures
+    // the On/Off status matches reality regardless of WHOIS DNSSEC reporting.
+    try { $result['dnssec'] = checkDnssec($domain); } catch (Throwable $e) {
+        $result['dnssec'] = ['status' => 'error', 'error' => $e->getMessage()];
+    }
     $result['edns'] = ['status' => 'skipped'];
     $result['doh'] = ['status' => 'skipped'];
     $result['dot'] = ['status' => 'skipped'];
@@ -2809,7 +2861,7 @@ try { $result['ssl'] = checkSsl($domain); } catch (Throwable $e) {
 
 // If WHOIS says DNSSEC is enabled but DNS check missed it (DS records live at
 // parent zone and may not be returned by direct query), trust WHOIS.
-if (isset($result['whois']['dnssec']) && preg_match('/^(?:yes|true|active|signed|enabled|1)$/i', $result['whois']['dnssec'])) {
+if (isset($result['whois']['dnssec']) && preg_match('/^(?:yes|true|active|signed|signeddelegation|enabled|delegationsigned|1)$/i', $result['whois']['dnssec'])) {
     if (!($result['dnssec']['enabled'] ?? false)) {
         $result['dnssec']['enabled'] = true;
         $result['dnssec']['status'] = 'ok';

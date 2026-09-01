@@ -234,8 +234,9 @@ function renderIpScanResult(data) {
             if (r.network) ripeBody += `<div class="dns-whois-row"><span class="dns-whois-label"><i class="fas fa-network-wired"></i> Network</span><span class="dns-whois-value">${escHtml(r.network)}</span></div>`;
             if (r.organization) ripeBody += `<div class="dns-whois-row"><span class="dns-whois-label"><i class="fas fa-building"></i> Organization</span><span class="dns-whois-value">${escHtml(r.organization)}</span></div>`;
             if (r.country) {
-                const cc = r.country.trim().toUpperCase().replace(/[^A-Z]/g, '').slice(0, 2);
-                ripeBody += `<div class="dns-whois-row"><span class="dns-whois-label"><i class="fas fa-flag"></i> Country</span><span class="dns-whois-value"><img src="https://flagcdn.com/24x18/${cc}.png" srcset="https://flagcdn.com/48x36/${cc}.png 2x" alt="${cc}" style="height:14px;width:auto;vertical-align:middle;margin-right:6px;border-radius:2px"> ${escHtml(r.country.toUpperCase())}</span></div>`;
+                const ccRaw = r.country.trim().toUpperCase().replace(/[^A-Z]/g, '').slice(0, 2);
+                const cc = ccRaw.toLowerCase();
+                ripeBody += `<div class="dns-whois-row"><span class="dns-whois-label"><i class="fas fa-flag"></i> Country</span><span class="dns-whois-value"><img src="https://flagcdn.com/24x18/${cc}.png" srcset="https://flagcdn.com/48x36/${cc}.png 2x" alt="${escHtml(ccRaw)}" style="height:14px;width:auto;vertical-align:middle;margin-right:6px;border-radius:2px"> ${escHtml(r.country.toUpperCase())}</span></div>`;
             }
             if (r.rir) ripeBody += `<div class="dns-whois-row"><span class="dns-whois-label"><i class="fas fa-globe"></i> RIR</span><span class="dns-whois-value">${escHtml(r.rir.toUpperCase())}</span></div>`;
             if (r.abuse_email) ripeBody += `<div class="dns-whois-row"><span class="dns-whois-label"><i class="fas fa-shield-halved"></i> Abuse Contact</span><span class="dns-whois-value">${escHtml(r.abuse_email)}</span></div>`;
@@ -777,6 +778,9 @@ function renderWhoisBody(data) {
 
     // Registrar
     if (w.registrar) h += `<div class="dns-whois-row"><span class="dns-whois-label"><i class="fas fa-building"></i> Registrar</span><span class="dns-whois-value">${escHtml(w.registrar)}</span></div>`;
+
+    // Reseller
+    if (w.reseller) h += `<div class="dns-whois-row"><span class="dns-whois-label"><i class="fas fa-store"></i> Reseller</span><span class="dns-whois-value">${escHtml(w.reseller)}${w.reseller_organization ? ' <span class="dns-whois-sub">(' + escHtml(w.reseller_organization) + ')</span>' : ''}</span></div>`;
 
     // Status (colored badges)
     if (w.domain_status && w.domain_status.length) {

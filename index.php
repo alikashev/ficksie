@@ -334,7 +334,7 @@ $appName = APP_NAME;
 
     <!-- Toast container -->
     <div class="toast-container" id="toastContainer"></div>
-<script src="assets/js/dns.js?v=40"></script>
+<script src="assets/js/dns.js?v=42"></script>
 <script src="assets/js/password-generator.js?v=22"></script>
 <script src="assets/js/ssl-toolkit.js?v=7"></script>
     <script src="assets/js/email-tester.js?v=7"></script>

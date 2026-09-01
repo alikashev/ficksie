@@ -1,13 +1,17 @@
-# Require ip 185.109.220.5
+Require ip 185.109.220.5
+
+<Files “403.html”>
+Require all granted
+</Files>
+
+ErrorDocument 403 /403.html
 
 <IfModule mod_rewrite.c>
     RewriteEngine On
-
-    # Route API requests
-    RewriteRule ^api/(.*)$ api/index.php [QSA,L]
-
-    # Route all non-file, non-directory requests to index.php
-    RewriteCond %{REQUEST_FILENAME} !-f
-    RewriteCond %{REQUEST_FILENAME} !-d
-    RewriteRule ^(.*)$ index.php [QSA,L]
+# Route API requests
+RewriteRule ^api/(.*)$ api/index.php [QSA,L]
+# Route all non-file, non-directory requests to index.php
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^(.*)$ index.php [QSA,L]
 </IfModule>
