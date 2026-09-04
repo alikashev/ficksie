@@ -93,6 +93,28 @@ CREATE TABLE IF NOT EXISTS email_tests (
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 ) ENGINE=InnoDB;
 
+-- Review Tracking
+CREATE TABLE IF NOT EXISTS reviews (
+    id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    user_id INT UNSIGNED DEFAULT NULL,
+    ticket_number VARCHAR(50) NOT NULL,
+    customer_name VARCHAR(150) NOT NULL,
+    review_date DATE NOT NULL,
+    label ENUM('Yourhosting','Versio','Argeweb','Hosting.nl') NOT NULL,
+    platform ENUM('Trustpilot','Google','Webhosters') NOT NULL,
+    rating TINYINT UNSIGNED DEFAULT NULL,
+    review_link VARCHAR(500) DEFAULT NULL,
+    notes TEXT DEFAULT NULL,
+    status ENUM('Review Requested','Review Received') NOT NULL DEFAULT 'Review Requested',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL,
+    INDEX idx_reviews_ticket (ticket_number),
+    INDEX idx_reviews_status (status),
+    INDEX idx_reviews_label (label),
+    INDEX idx_reviews_platform (platform)
+) ENGINE=InnoDB;
+
 -- IP Reputation cache
 CREATE TABLE IF NOT EXISTS ip_cache (
     ip VARCHAR(45) NOT NULL,

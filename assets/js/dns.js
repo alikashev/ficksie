@@ -543,83 +543,87 @@ function renderDnsResult(data) {
         </div>
     </div>
 
-    <div class="dns-card">
-        <div class="dns-section">
-            <div class="dns-section-title"><i class="fas fa-list"></i> DNS Records</div>
-            <div class="dns-section-body">
-                ${aRecs || '<div class="dns-rec-empty"><i class="fas fa-info-circle"></i> No A records</div>'}
-                ${aaaaRecs || ''}
-                ${subRecs || ''}
-                ${spfLine || ''}
-                ${mxRecs || '<div class="dns-rec-empty"><i class="fas fa-info-circle"></i> No MX records</div>'}
-                ${txtRecs || ''}
-                ${authTxtRecs || ''}
-                ${nsRecs || '<div class="dns-rec-empty"><i class="fas fa-info-circle"></i> No nameservers</div>'}
-                ${soaRec || '<div class="dns-rec-empty"><i class="fas fa-info-circle"></i> No SOA record</div>'}
-                ${caaRecs ? '<div class="dns-rec-sep"><i class="fas fa-shield-halved"></i> CAA</div>' + caaRecs : ''}
-                ${fcrdnsBadge || ''}
-                ${srvRecs ? '<div class="dns-rec-sep"><i class="fas fa-server"></i> SRV</div>' + srvRecs : ''}
-                ${nsCheck ? '<div class="dns-rec-sep"><i class="fas fa-server"></i> Nameserver Check</div>' + nsCheck : ''}
-            </div>
-        </div>
-        <div class="dns-section">
-            <div class="dns-section-title"><i class="fas fa-building"></i> WHOIS</div>
-            <div class="dns-section-body">${renderWhoisBody(data)}</div>
-        </div>
-        <div class="dns-section">
-            <div class="dns-section-title"><i class="fas fa-certificate"></i> SSL Certificates</div>
-            <div class="dns-section-body">${renderSslBody(data)}</div>
-        </div>
-        <div class="dns-section">
-            <div class="dns-section-title"><i class="fas fa-shield-halved"></i> Email Authentication</div>
-            <div class="dns-section-body">${renderEmailAuthBody(data)}</div>
-        </div>
-        <div class="dns-section">
-            <div class="dns-section-title"><i class="fas fa-lock"></i> Security</div>
-            <div class="dns-section-body">${renderDnsSecBody(data)}</div>
-        </div>
-        <div class="dns-section">
-            <div class="dns-section-title"><i class="fas fa-sitemap"></i> Delegation</div>
-            <div class="dns-section-body">${renderDelegationBody(data)}</div>
-        </div>
-        <div class="dns-section">
-            <div class="dns-section-title"><i class="fas fa-rss"></i> Propagation</div>
-            <div class="dns-section-body">${renderPropagationBody(data)}</div>
-        </div>
-        <div class="dns-section">
-            <div class="dns-section-title"><i class="fas fa-network-wired"></i> Protocols</div>
-            <div class="dns-section-body">${renderProtocolsBody(data)}</div>
-        </div>
-        <div class="dns-section">
-            <div class="dns-section-title"><i class="fas fa-terminal"></i> Dig Tool</div>
-            <div class="dns-section-body" id="dnsDigBody">
-                <div class="dns-dig-form">
-                    <select id="dnsDigType" class="dns-dig-input dns-dig-select">
-                        <option value="A">A</option>
-                        <option value="AAAA">AAAA</option>
-                        <option value="CNAME">CNAME</option>
-                        <option value="MX">MX</option>
-                        <option value="TXT">TXT</option>
-                        <option value="NS">NS</option>
-                        <option value="SOA">SOA</option>
-                    </select>
-                    <input type="text" id="dnsDigName" class="dns-dig-input dns-dig-name" value="${escHtml(data.domain)}" placeholder="name">
-                    <select id="dnsDigNs" class="dns-dig-input dns-dig-select">
-                        <option value="">System resolver</option>
-                        ${(data.ns.nameservers || []).map(ns => '<option value="' + escHtml(ns) + '">' + escHtml(ns) + '</option>').join('')}
-                    </select>
-                    <button class="btn btn-sm btn-primary" id="dnsDigBtn"><i class="fas fa-play"></i> Dig</button>
+    <div class="dns-layout">
+        <div class="dns-card">
+            <div class="dns-section">
+                <div class="dns-section-title"><i class="fas fa-list"></i> DNS Records</div>
+                <div class="dns-section-body">
+                    ${aRecs || '<div class="dns-rec-empty"><i class="fas fa-info-circle"></i> No A records</div>'}
+                    ${aaaaRecs || ''}
+                    ${subRecs || ''}
+                    ${spfLine || ''}
+                    ${mxRecs || '<div class="dns-rec-empty"><i class="fas fa-info-circle"></i> No MX records</div>'}
+                    ${txtRecs || ''}
+                    ${authTxtRecs || ''}
+                    ${nsRecs || '<div class="dns-rec-empty"><i class="fas fa-info-circle"></i> No nameservers</div>'}
+                    ${soaRec || '<div class="dns-rec-empty"><i class="fas fa-info-circle"></i> No SOA record</div>'}
+                    ${caaRecs ? '<div class="dns-rec-sep"><i class="fas fa-shield-halved"></i> CAA</div>' + caaRecs : ''}
+                    ${fcrdnsBadge || ''}
+                    ${srvRecs ? '<div class="dns-rec-sep"><i class="fas fa-server"></i> SRV</div>' + srvRecs : ''}
+                    ${nsCheck ? '<div class="dns-rec-sep"><i class="fas fa-server"></i> Nameserver Check</div>' + nsCheck : ''}
                 </div>
-                <div id="dnsDigResult" class="dns-dig-result"></div>
+            </div>
+            <div class="dns-section">
+                <div class="dns-section-title"><i class="fas fa-shield-halved"></i> Email Authentication</div>
+                <div class="dns-section-body">${renderEmailAuthBody(data)}</div>
+            </div>
+            <div class="dns-section">
+                <div class="dns-section-title"><i class="fas fa-lock"></i> Security</div>
+                <div class="dns-section-body">${renderDnsSecBody(data)}</div>
+            </div>
+            <div class="dns-section">
+                <div class="dns-section-title"><i class="fas fa-sitemap"></i> Delegation</div>
+                <div class="dns-section-body">${renderDelegationBody(data)}</div>
+            </div>
+            <div class="dns-section">
+                <div class="dns-section-title"><i class="fas fa-rss"></i> Propagation</div>
+                <div class="dns-section-body">${renderPropagationBody(data)}</div>
+            </div>
+            <div class="dns-section">
+                <div class="dns-section-title"><i class="fas fa-network-wired"></i> Protocols</div>
+                <div class="dns-section-body">${renderProtocolsBody(data)}</div>
+            </div>
+            <div class="dns-section">
+                <div class="dns-section-title"><i class="fas fa-download"></i> Export</div>
+                <div class="dns-section-body">
+                    <div class="dns-btn-row">
+                        <button class="btn btn-sm btn-secondary" id="dnsExportJson"><i class="fas fa-download"></i> JSON</button>
+                        <button class="btn btn-sm btn-secondary" id="dnsExportPdf"><i class="fas fa-file-pdf"></i> PDF</button>
+                        <button class="btn btn-sm btn-secondary" id="dnsCopyAllBtn"><i class="fas fa-copy"></i> Copy All</button>
+                    </div>
+                </div>
             </div>
         </div>
-        <div class="dns-section">
-            <div class="dns-section-title"><i class="fas fa-download"></i> Export</div>
-            <div class="dns-section-body">
-                <div class="dns-btn-row">
-                    <button class="btn btn-sm btn-secondary" id="dnsExportJson"><i class="fas fa-download"></i> JSON</button>
-                    <button class="btn btn-sm btn-secondary" id="dnsExportPdf"><i class="fas fa-file-pdf"></i> PDF</button>
-                    <button class="btn btn-sm btn-secondary" id="dnsCopyAllBtn"><i class="fas fa-copy"></i> Copy All</button>
+        <div class="dns-sidebar">
+            <div class="dns-section">
+                <div class="dns-section-title"><i class="fas fa-building"></i> WHOIS</div>
+                <div class="dns-section-body">${renderWhoisBody(data)}</div>
+            </div>
+            <div class="dns-section">
+                <div class="dns-section-title"><i class="fas fa-certificate"></i> SSL Certificates</div>
+                <div class="dns-section-body">${renderSslBody(data)}</div>
+            </div>
+            <div class="dns-section">
+                <div class="dns-section-title"><i class="fas fa-terminal"></i> Dig Tool</div>
+                <div class="dns-section-body" id="dnsDigBody">
+                    <div class="dns-dig-form">
+                        <select id="dnsDigType" class="dns-dig-input dns-dig-select">
+                            <option value="A">A</option>
+                            <option value="AAAA">AAAA</option>
+                            <option value="CNAME">CNAME</option>
+                            <option value="MX">MX</option>
+                            <option value="TXT">TXT</option>
+                            <option value="NS">NS</option>
+                            <option value="SOA">SOA</option>
+                        </select>
+                        <input type="text" id="dnsDigName" class="dns-dig-input dns-dig-name" value="${escHtml(data.domain)}" placeholder="name">
+                        <select id="dnsDigNs" class="dns-dig-input dns-dig-select">
+                            <option value="">System resolver</option>
+                            ${(data.ns.nameservers || []).map(ns => '<option value="' + escHtml(ns) + '">' + escHtml(ns) + '</option>').join('')}
+                        </select>
+                        <button class="btn btn-sm btn-primary" id="dnsDigBtn"><i class="fas fa-play"></i> Dig</button>
+                    </div>
+                    <div id="dnsDigResult" class="dns-dig-result"></div>
                 </div>
             </div>
         </div>

@@ -214,7 +214,7 @@ function closeAllModals() {
 // ============================================
 // Tab System
 // ============================================
-const TAB_MAX = 5;
+const TAB_MAX = 10;
 let tabState = { tabs: [], activeTab: null };
 
 const viewMeta = {
@@ -229,7 +229,8 @@ const viewMeta = {
     'password-generator': { title: 'Entropy Fabricator',     tabLabel: 'Password Generator',subtitle: 'Concocting unhackable gibberish so you don\'t have to', icon: 'fa-key' },
     'ssl-toolkit':        { title: 'Certificate Autopsy',    tabLabel: 'SSL/TLS',  subtitle: 'Dissecting trust chains and their existential crises', icon: 'fa-shield-halved' },
     'email-deliverability': { title: 'Deliverability Lab',   tabLabel: 'Email Tester',  subtitle: 'Email authentication, content, and deliverability analysis', icon: 'fa-paper-plane' },
-    'text-toolkit':       { title: 'String Theory',          tabLabel: 'Text Toolkit',     subtitle: 'Thirty-four ways to mangle, massage and mine raw text', icon: 'fa-font' },
+    'review-tracker':       { title: 'Review Tracker',       tabLabel: 'Reviews',       subtitle: 'Track and manage customer reviews',                         icon: 'fa-star' },
+    'text-toolkit':         { title: 'String Theory',        tabLabel: 'Text Toolkit',  subtitle: 'Thirty-four ways to mangle, massage and mine raw text',      icon: 'fa-font' },
     'users':              { title: 'Fiefdom Registry',       tabLabel: 'Manage Users',     subtitle: 'Administering the plebeian access roster', icon: 'fa-users' },
 };
 
@@ -283,6 +284,7 @@ function dispatchRender(view) {
     else if (view === 'password-generator') renderPasswordGenerator();
     else if (view === 'ssl-toolkit')        renderSslToolkit();
     else if (view === 'email-deliverability') renderEmailDeliverabilityTester();
+    else if (view === 'review-tracker')      renderReviewTracker();
     else if (view === 'text-toolkit')       renderTextToolkit();
     else if (view === 'users')              renderUserManagement();
 }
@@ -294,7 +296,7 @@ function openTab(view) {
         return;
     }
     if (tabState.tabs.length >= TAB_MAX) {
-        toast('Max 3 tabs. Close one first.', 'error');
+        toast('Max 10 tabs. Close one first.', 'error');
         return;
     }
     const id = 'tab_' + Date.now();
@@ -376,6 +378,22 @@ function initSidebarNav() {
         pill.addEventListener('click', (e) => {
             e.preventDefault();
             navigate(pill.dataset.view);
+        });
+    });
+
+    // Collapsible sidebar groups
+    document.querySelectorAll('.nav-section[data-group]').forEach(btn => {
+        const groupKey = btn.dataset.group;
+        const isOpen = localStorage.getItem('nav-group-' + groupKey) === '1';
+
+        const group = btn.closest('.nav-group');
+        if (isOpen) group.classList.add('open');
+
+        btn.addEventListener('click', (e) => {
+            e.preventDefault();
+            const isCollapsed = !group.classList.contains('open');
+            group.classList.toggle('open', isCollapsed);
+            localStorage.setItem('nav-group-' + groupKey, isCollapsed ? '1' : '0');
         });
     });
 }
@@ -529,6 +547,13 @@ async function renderDashboard() {
                 name: 'Text Toolkit',
                 desc: 'Transform, clean, extract, format, encode, and analyze text.',
                 color: '#eab308',
+            },
+            {
+                key: 'review-tracker',
+                icon: 'fa-star',
+                name: 'Review Tracker',
+                desc: 'Track and manage customer reviews across platforms',
+                color: '#f59e0b',
             },
         ];
 
@@ -696,26 +721,22 @@ async function renderDashboard() {
             card.addEventListener('click', () => navigate(card.dataset.nav));
         });
 
-        spMount(body, activeTools, crmLinks, externalTools);
+        spMount(activeTools, crmLinks, externalTools);
     } catch (err) {
         body.innerHTML = `<div class="empty-state"><i class="fas fa-exclamation-triangle"></i><h3>Failed to load dashboard</h3><p>${err.message}</p></div>`;
     }
 }
 
 // ============================================
-// Dashboard Spotlight Search (Ctrl/Cmd+F)
+// Spotlight Search (Ctrl/Cmd+F) — global overlay
 // ============================================
 let spItems = [];
 let spOpenState = false;
 let spFlat = [];
 let spSel = 0;
+let spMounted = false;
 
-function spIsDashboardActive() {
-    const tab = tabState.tabs.find(t => t.id === tabState.activeTab);
-    return !!tab && tab.view === 'dashboard';
-}
-
-function spMount(body, tools, crm, ext) {
+function spMount(tools, crm, ext) {
     const keywords = {
         'commands': 'terminal shell bash linux console',
         'email-anonymizer': 'privacy hide alias anonymize',
@@ -728,6 +749,7 @@ function spMount(body, tools, crm, ext) {
         'ssl-toolkit': 'certificate tls https chain expiry hsts',
         'email-deliverability': 'spf dkim dmarc score mail test deliverability',
         'text-toolkit': 'string case convert encode decode base64 regex extract analyze word count slug json csv statistics',
+        'review-tracker': 'review customer feedback rating stars trustpilot google bonus ticket',
     };
 
     const host = u => { try { return new URL(u).hostname.replace(/^www\./, ''); } catch (e) { return u; } };
@@ -765,32 +787,16 @@ function spMount(body, tools, crm, ext) {
         })),
     ];
 
-    let backdrop = body.querySelector('.sp-backdrop');
-    if (backdrop) return;
-    body.insertAdjacentHTML('beforeend', `
-        <div class="sp-backdrop">
-            <div class="sp-panel" role="dialog" aria-label="Dashboard search">
-                <div class="sp-input-row">
-                    <i class="fas fa-magnifying-glass"></i>
-                    <input type="text" class="sp-input" placeholder="Search tools, links, everything\u2026" autocomplete="off" spellcheck="false">
-                    <kbd class="sp-kbd">esc</kbd>
-                </div>
-                <div class="sp-results"></div>
-                <div class="sp-footer">
-                    <span><kbd class="sp-kbd">\u2191</kbd><kbd class="sp-kbd">\u2193</kbd> navigate</span>
-                    <span><kbd class="sp-kbd">\u21b5</kbd> open</span>
-                    <span><kbd class="sp-kbd">esc</kbd> close</span>
-                </div>
-            </div>
-        </div>
-    `);
-    backdrop = body.querySelector('.sp-backdrop');
+    if (spMounted) return;
+    spMounted = true;
+
+    const backdrop = document.getElementById('spBackdrop');
+    const input = document.getElementById('spInput');
+    const resultsEl = backdrop.querySelector('.sp-results');
 
     backdrop.addEventListener('mousedown', e => {
         if (e.target === backdrop) spClose();
     });
-
-    const resultsEl = backdrop.querySelector('.sp-results');
     resultsEl.addEventListener('mouseover', e => {
         const item = e.target.closest('.sp-item');
         if (item && +item.dataset.sp !== spSel) spSelect(+item.dataset.sp, false);
@@ -799,7 +805,7 @@ function spMount(body, tools, crm, ext) {
         const item = e.target.closest('.sp-item');
         if (item) spActivate(+item.dataset.sp);
     });
-    backdrop.querySelector('.sp-input').addEventListener('input', e => {
+    input.addEventListener('input', e => {
         spRender(backdrop, e.target.value);
     });
 }
@@ -870,7 +876,7 @@ function spRender(backdrop, query) {
 }
 
 function spSelect(idx, scroll = true) {
-    const resultsEl = document.querySelector('.tab-panel.active .sp-results');
+    const resultsEl = document.querySelector('#spBackdrop .sp-results');
     if (!resultsEl) return;
     spSel = idx;
     resultsEl.querySelectorAll('.sp-item').forEach(el => {
@@ -895,7 +901,7 @@ function spActivate(idx) {
 }
 
 function spOpenModal() {
-    const backdrop = document.querySelector('.tab-panel.active .sp-backdrop');
+    const backdrop = document.getElementById('spBackdrop');
     if (!backdrop) return;
     spOpenState = true;
     backdrop.classList.add('open');
@@ -906,14 +912,16 @@ function spOpenModal() {
 }
 
 function spClose() {
-    const backdrop = document.querySelector('.tab-panel.active .sp-backdrop');
+    const backdrop = document.getElementById('spBackdrop');
     if (backdrop) backdrop.classList.remove('open');
     spOpenState = false;
 }
 
 document.addEventListener('keydown', e => {
     if ((e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey && e.key.toLowerCase() === 'f') {
-        if (!spIsDashboardActive()) return;
+        const tag = document.activeElement?.tagName;
+        const isEditable = document.activeElement?.contentEditable === 'true';
+        if (tag === 'INPUT' || tag === 'TEXTAREA' || isEditable) return;
         e.preventDefault();
         if (spOpenState) spClose(); else spOpenModal();
         return;

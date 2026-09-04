@@ -66,6 +66,9 @@ try {
         case 'email-test-receive':
             require __DIR__ . '/email-test-receive.php';
             break;
+        case 'reviews':
+            require __DIR__ . '/reviews.php';
+            break;
         default:
             Response::notFound('API endpoint not found');
     }
