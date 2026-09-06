@@ -219,6 +219,7 @@ let tabState = { tabs: [], activeTab: null };
 
 const viewMeta = {
     'dashboard':          { title: 'CMD CTRL',              tabLabel: 'Dashboard',        subtitle: 'Sanctum sanctorum of your digital hegemony',        icon: 'fa-th-large' },
+    'ai-chat':            { title: 'Neural Cohort',         tabLabel: 'AI Chat',          subtitle: 'Consulting the silicon scribe',                   icon: 'fa-robot' },
     'commands':           { title: 'Incantation Ledger',     tabLabel: 'Commands',         subtitle: 'Where arcane shell sorcery lives on',     icon: 'fa-terminal' },
     'email-anonymizer':   { title: 'Cryptographic Shroud',   tabLabel: 'Email Anonymizer', subtitle: 'Obscuring digital identities since the invention of shame', icon: 'fa-mask' },
     'email-header-viz':   { title: 'SMTP Archaeology',      tabLabel: 'Header Visualizer',subtitle: 'Exhuming forensic traces from your inbound missives', icon: 'fa-code-branch' },
@@ -274,6 +275,7 @@ function renderTabBar() {
 
 function dispatchRender(view) {
     if (view === 'dashboard')          renderDashboard();
+    else if (view === 'ai-chat')            renderAiChat();
     else if (view === 'commands')           renderCommands();
     else if (view === 'email-anonymizer')   renderEmailAnonymizer();
     else if (view === 'email-header-viz')   renderEmailHeaderViz();
@@ -317,6 +319,7 @@ function openTab(view) {
     renderTabBar();
     saveTabs();
     updateNavActive(view);
+    updateAiFabState(document.getElementById('aiFab'));
     dispatchRender(view);
 }
 
@@ -335,6 +338,7 @@ function switchTab(tabId) {
     renderTabBar();
     saveTabs();
     updateNavActive(tab.view);
+    updateAiFabState(document.getElementById('aiFab'));
     closeSidebar();
 }
 
@@ -396,6 +400,21 @@ function initSidebarNav() {
             localStorage.setItem('nav-group-' + groupKey, isCollapsed ? '1' : '0');
         });
     });
+}
+
+function initAiFab() {
+    const fab = document.getElementById('aiFab');
+    if (!fab) return;
+    fab.addEventListener('click', () => {
+        navigate('ai-chat');
+    });
+    updateAiFabState(fab);
+}
+
+function updateAiFabState(fab) {
+    if (!fab) return;
+    const active = state.currentView === 'ai-chat';
+    fab.classList.toggle('active', active);
 }
 
 function loadTabs() {
@@ -3157,6 +3176,7 @@ async function initApp() {
     initKeyboard();
     initSidebar();
     initSidebarNav();
+    initAiFab();
     document.getElementById('themeToggle').addEventListener('click', toggleTheme);
     document.getElementById('logoutBtn').addEventListener('click', async () => {
         await handleLogout();

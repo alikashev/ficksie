@@ -124,3 +124,64 @@ CREATE TABLE IF NOT EXISTS ip_cache (
     PRIMARY KEY (ip, source),
     INDEX idx_ip_cache_created (created_at)
 ) ENGINE=InnoDB;
+
+-- ============================================
+-- AI Assistant (NVIDIA NIM)
+-- ============================================
+
+-- AI generic key/value cache (used to cache the live NVIDIA model catalog)
+CREATE TABLE IF NOT EXISTS ai_cache (
+    cache_key VARCHAR(64) PRIMARY KEY,
+    data MEDIUMBLOB NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB;
+
+-- AI conversations
+CREATE TABLE IF NOT EXISTS ai_conversations (
+    id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    user_id INT UNSIGNED NOT NULL,
+    title VARCHAR(200) NOT NULL DEFAULT 'New conversation',
+    model VARCHAR(150) NOT NULL DEFAULT 'nvidia/nemotron-3-super-120b-a12b',
+    system_prompt TEXT DEFAULT NULL,
+    last_message_at DATETIME DEFAULT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX idx_ai_conv_user (user_id, last_message_at),
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB;
+
+-- AI messages
+CREATE TABLE IF NOT EXISTS ai_messages (
+    id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    conversation_id INT UNSIGNED NOT NULL,
+    user_id INT UNSIGNED NOT NULL,
+    role ENUM('user','assistant') NOT NULL,
+    content MEDIUMTEXT NOT NULL,
+    reasoning MEDIUMTEXT DEFAULT NULL,
+    attachments JSON DEFAULT NULL,
+    model VARCHAR(150) DEFAULT NULL,
+    is_error TINYINT(1) NOT NULL DEFAULT 0,
+    prompt_tokens INT UNSIGNED DEFAULT NULL,
+    completion_tokens INT UNSIGNED DEFAULT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_ai_msg_conv (conversation_id, id),
+    FOREIGN KEY (conversation_id) REFERENCES ai_conversations(id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB;
+
+-- AI file attachments (images and, in the future, other file types)
+CREATE TABLE IF NOT EXISTS ai_attachments (
+    id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    user_id INT UNSIGNED NOT NULL,
+    conversation_id INT UNSIGNED DEFAULT NULL,
+    filename VARCHAR(255) NOT NULL,
+    mime VARCHAR(100) NOT NULL,
+    size INT UNSIGNED NOT NULL,
+    kind VARCHAR(20) NOT NULL DEFAULT 'image',
+    data LONGBLOB NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_ai_att_conv (conversation_id),
+    INDEX idx_ai_att_user (user_id),
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (conversation_id) REFERENCES ai_conversations(id) ON DELETE SET NULL
+) ENGINE=InnoDB;

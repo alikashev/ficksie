@@ -69,6 +69,9 @@ try {
         case 'reviews':
             require __DIR__ . '/reviews.php';
             break;
+        case 'ai':
+            require __DIR__ . '/ai.php';
+            break;
         default:
             Response::notFound('API endpoint not found');
     }

@@ -22,7 +22,8 @@ $appName = APP_NAME;
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=VT323&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-    <link rel="stylesheet" href="assets/css/style.css?v=127">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
+    <link rel="stylesheet" href="assets/css/style.css?v=129">
 </head>
 <body>
     <div id="app">
@@ -58,6 +59,19 @@ $appName = APP_NAME;
                     <i class="fas fa-th-large"></i>
                     <span class="nav-pill-label">Dashboard</span>
                 </a>
+
+                <div class="nav-group nav-group-ai">
+                    <button class="nav-section" data-group="ai-assistant">
+                        <span class="nav-section-label">AI Assistant</span>
+                        <i class="fas fa-chevron-right nav-section-arrow"></i>
+                    </button>
+                    <div class="nav-group-body" data-group-body="ai-assistant">
+                        <a class="nav-pill" data-view="ai-chat" title="AI Assistant">
+                            <i class="fas fa-robot"></i>
+                            <span class="nav-pill-label">AI Chat</span>
+                        </a>
+                    </div>
+                </div>
 
                 <div class="nav-group">
                     <button class="nav-section" data-group="email-tools">
@@ -480,13 +494,20 @@ $appName = APP_NAME;
 
     <!-- Toast container -->
     <div class="toast-container" id="toastContainer"></div>
+
+    <!-- Floating AI button -->
+    <button class="ai-fab" id="aiFab" title="Ask AI" aria-label="Open AI chat">
+        <i class="fas fa-robot"></i>
+    </button>
 <script src="assets/js/dns.js?v=45"></script>
 <script src="assets/js/password-generator.js?v=22"></script>
 <script src="assets/js/ssl-toolkit.js?v=7"></script>
-    <script src="assets/js/email-tester.js?v=7"></script>
-    <script src="assets/js/text-toolkit.js?v=2"></script>
+<script src="assets/js/email-tester.js?v=7"></script>
+<script src="assets/js/text-toolkit.js?v=2"></script>
 <script src="assets/js/review-tracker.js?v=3"></script>
+<script src="assets/js/ai-chat.js?v=1"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
 
-    <script src="assets/js/app.js?v=124"></script>
+    <script src="assets/js/app.js?v=125"></script>
 </body>
 </html>

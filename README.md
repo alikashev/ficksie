@@ -1,6 +1,6 @@
 # Ficksie
 
-A modular web application for managing developer tools — store Linux commands, save email response snippets, anonymize email addresses, analyze DNS, check SSL certificates, generate CSRs, decode certificates, investigate IP reputation, test email deliverability, transform text with 34 built-in operations, and track customer reviews across hosting platforms. Built with PHP + MySQL and a vanilla JavaScript SPA frontend.
+A modular web application for managing developer tools — store Linux commands, save email response snippets, anonymize email addresses, analyze DNS, check SSL certificates, generate CSRs, decode certificates, investigate IP reputation, test email deliverability, transform text with 34 built-in operations, track customer reviews across hosting platforms, and chat with a curated collection of NVIDIA NIM AI models. Built with PHP + MySQL and a vanilla JavaScript SPA frontend.
 
 No build tools, no Node.js, no framework dependencies. Just upload and go.
 
@@ -19,6 +19,7 @@ No build tools, no Node.js, no framework dependencies. Just upload and go.
 - **Text Toolkit** — 34 client-side text operations in six categories: Transform (case conversion, slugs, reversing), Clean (trim, dedupe, sort, strip HTML/entities/punctuation), Extract (domains, URLs, emails, IPs, numbers, hashtags), Encode/Decode (URL, Base64), Format (JSON, CSV, line numbers), and Analyze (text statistics, word frequency, find & replace, regex tester). Everything runs locally in the browser — no data ever leaves your machine.
 - **IP Reputation Checker** — Aggregate data from ip-api.com (ASN/GeoIP), Spamhaus DNSBL, TOR exit node detection, AbuseIPDB, and VirusTotal. Computes a risk score and reputation rating.
 - **Review Tracker** — Track and manage customer review requests across hosting platforms (Yourhosting, Versio, Argeweb, Hosting.nl) on Trustpilot, Google, and Webhosters. Monthly stats bar with requested/received counts and bonus calculation (€20/received). Inline status toggling, star ratings, search, multi-column filtering, and a full CRUD modal.
+- **AI Chat** — A full chat assistant powered by NVIDIA NIM (OpenAI-compatible API). Curated model catalog (Nemotron, Llama, Qwen, DeepSeek, Mistral, GPT-OSS, Kimi, Gemma, Phi-4) merged with live NVIDIA model listings. Streaming SSE responses with reasoning ("thinking") panels, persistent per-user conversations with auto-titles, image attachments for vision models, Markdown rendering with highlighted code blocks, regenerate/edit-resend, and stop-generation.
 - **Dashboard** — Quick overview of all tools with stats, CRM & provider links, and external tool shortcuts with branded icons.
 - **Spotlight Search** — Press `Ctrl+F` (`Cmd+F` on Mac) anywhere for a Spotlight-style overlay that searches every tool, CRM/provider link, nested sub-link, and external tool with keyboard navigation and match highlighting.
 - **Collapsible Sidebar** — Tools organized into collapsible groups (Email Tools, Text & Content, Network & Security, Utility, Sales, Administration). Groups save open/closed state. Desktop collapsed (icon-only) mode shows groups on hover. Admin group pinned to bottom.
@@ -97,6 +98,14 @@ Open `https://yourdomain.com/` in your browser. The first user to register becom
 | `ABUSEIPDB_KEY` | AbuseIPDB API key (optional) | `''` |
 | `VIRUSTOTAL_KEY` | VirusTotal API key (optional) | `''` |
 | `EMAIL_TEST_DOMAIN` | Domain for generating test email addresses (required for Email Tester) | `''` |
+| `NVIDIA_API_KEY` | NVIDIA NIM API key (required for AI Chat responses; leave empty to run in setup mode) | `''` |
+| `NVIDIA_BASE_URL` | NVIDIA NIM OpenAI-compatible base URL | `https://integrate.api.nvidia.com/v1` |
+| `NVIDIA_DEFAULT_MODEL` | Default model id for new conversations | `nvidia/nemotron-3-super-120b-a12b` |
+| `NVIDIA_MODELS_CACHE_TTL` | Seconds to cache the live NVIDIA model list | `86400` |
+| `AI_SYSTEM_PROMPT` | System prompt injected into every chat request | *(ficksie-specific)* |
+| `AI_ATTACHMENT_MAX_BYTES` | Max bytes per image attachment | `5242880` |
+| `AI_ATTACHMENT_MAX_FILES` | Max image attachments per message | `8` |
+| `AI_MESSAGE_MAX_CHARS` | Max characters per chat message | `40000` |
 
 ## Development
 
@@ -125,6 +134,7 @@ Then open `http://localhost:8080/`.
 │   ├── email-test.php          # Email Deliverability Tester (test creation, status, analysis)
 │   ├── email-test-receive.php  # Webhook for receiving raw emails (no auth required)
 │   ├── email-test-pipe.php     # Exim pipe transport script with DNS-based auth checks
+│   ├── ai.php                  # AI Chat REST routes + SSE streaming + image attachment uploads
 │   └── reviews.php             # Review Tracker CRUD (list, create, update, delete)
 ├── assets/
 │   ├── css/style.css           # Complete stylesheet
@@ -135,7 +145,8 @@ Then open `http://localhost:8080/`.
 │       ├── password-generator.js # Password generator frontend logic
 │       ├── email-tester.js     # Email Deliverability Tester frontend logic
 │       ├── review-tracker.js   # Review Tracker frontend logic
-│       └── text-toolkit.js     # Text Toolkit frontend logic (34 client-side operations)
+│       ├── text-toolkit.js     # Text Toolkit frontend logic (34 client-side operations)
+│       └── ai-chat.js          # AI Chat frontend logic (chat UI, streaming SSE, Markdown)
 ├── database/
 │   ├── schema.sql              # Database tables
 │   └── seed.sql                # Sample data
@@ -144,7 +155,8 @@ Then open `http://localhost:8080/`.
 │   ├── functions.php           # Route parser, CORS, sanitization, auth helpers
 │   ├── response.php            # JSON response helpers
 │   ├── email-parser.php        # Raw email parser (headers, MIME, links, attachments)
-│   └── email-analyzer.php      # Deliverability analysis engine (scoring, findings)
+│   ├── email-analyzer.php      # Deliverability analysis engine (scoring, findings)
+│   └── ai.php                  # AiHelper class (catalog, streaming, conversations, attachments)
 ├── config.php                  # Application configuration (gitignored)
 ├── config.example.php          # Configuration template
 ├── index.php                   # SPA entry point (sidebar, modals, loads all JS/CSS)
@@ -386,6 +398,54 @@ CREATE TABLE reviews (
 );
 ```
 
+### AI Chat
+
+A full-featured chat assistant backed by NVIDIA NIM (OpenAI-compatible `chat/completions` API). Curated model metadata is merged with the live NVIDIA model list (cached for `NVIDIA_MODELS_CACHE_TTL` seconds in `ai_cache`).
+
+#### Features
+
+- **Model catalog** — ~26 curated models (Nemotron 3 Super, Llama Nemotron, Llama 4 Maverick/Scout, Llama 3.x, Qwen incl. Coder + VL, DeepSeek R1/V3, Mistral/NeMo, GPT-OSS, Kimi K2/K2.5, CodeGemma/Gemma 2+3, Phi-4) decorated with descriptions, tags (reasoning/coding/vision/fast/general), vision support and speed hints; merged with live NVIDIA listings
+- **Streaming SSE** — Token-by-token responses with a throttled re-render, reasoning ("Thinking") panels for reasoning models, and a stop button (aborts and keeps the partial reply)
+- **Conversations** — Persistent per-user conversations with auto-generated titles, rename/delete, and model-per-conversation (defaulting to the saved `aiDefaultModel` in localStorage)
+- **Image attachments** — Up to 8 images (5 MB each) for vision-capable models, validated server-side by magic number; `image_url` data-URIs are injected into the request. Attach via picker, drag-and-drop, or paste; current-model gating
+- **Markdown rendering** — Headings, lists (nested), tables, blockquotes, inline code, links with URL safety checks, and highlighted code blocks (highlight.js) with a copy button
+- **Edit & resend / regenerate** — Re-run any assistant response or edit a user message and rebranch from it
+
+#### Configuration
+
+```php
+define('NVIDIA_API_KEY', 'nvapi-...');  // from https://build.nvidia.com ("Get API Key" per model)
+define('NVIDIA_BASE_URL', 'https://integrate.api.nvidia.com/v1');
+define('NVIDIA_DEFAULT_MODEL', 'nvidia/nemotron-3-super-120b-a12b');
+define('AI_SYSTEM_PROMPT', 'You are ficksie AI, an assistant embedded in the ficksie web-utility suite...');
+```
+
+When `NVIDIA_API_KEY` is empty the UI shows a setup banner; all endpoints still respond (empty catalog / friendly errors).
+
+#### API Endpoints
+
+| Method | Endpoint | Description |
+|---|---|---|
+| GET | `/api/ai/models` | Merged model catalog `{ configured, live, source, default_model, models[] }` |
+| POST | `/api/ai/conversations` | Create conversation (optional `model`) |
+| GET | `/api/ai/conversations` | List current user's conversations |
+| GET | `/api/ai/conversations/{id}` | Conversation detail + messages |
+| PATCH | `/api/ai/conversations/{id}` | Update model / title |
+| DELETE | `/api/ai/conversations/{id}` | Delete conversation + messages (attachments kept until cleanup) |
+| POST | `/api/ai/conversations/{id}/messages` | Send message; streams SSE events (`start`, `delta`, `reason`, `error`, `[DONE]`) |
+| POST | `/api/ai/conversations/{id}/regenerate` | Re-run last assistant message; streams SSE |
+| POST | `/api/ai/attachments` | Upload images (`multipart/form-data`, field `files`) |
+| GET | `/api/ai/attachments/{id}` | Inline image (origin-verified) |
+| DELETE | `/api/ai/attachments/{id}` | Delete pending attachment |
+
+#### Security
+
+- The NVIDIA API key is only used server-side (`config.php` → `AiHelper`) and never exposed to the browser
+- Attachments are validated by magic number (`getimagesize`) and served inline only from the same origin, by creator
+- Message length limits, attachment count/size limits, and a per-user throttle guard in `AiHelper`
+- Orphaned attachment rows are automatically deleted during conversation cleanup
+- All headers on the NVIDIA call include the model context for `buildRequestMessages`
+
 ## Dashboard
 
 The dashboard includes:
@@ -449,6 +509,9 @@ The dashboard includes:
 10. Bump the `?v=N` cache buster for every modified JS/CSS file in `index.php`
 
 ## Version History
+
+### v1.3.0 (2026-09-06)
+- **New: AI Chat** — NVIDIA NIM-powered chat assistant with curated model catalog, streaming SSE, reasoning panels, persistent conversations, image attachments for vision models, Markdown + highlighted code blocks, regenerate/edit-resend, and stop-generation. New "AI Assistant" sidebar group. Requires `NVIDIA_API_KEY` in `config.php`.
 
 ### v1.2.2 (2026-09-04)
 - **New: Review Tracker** — Full CRUD tool for tracking customer review requests across hosting brands and platforms. Monthly stats bar with requested/received/bonus counters, inline status toggle, star ratings, search, multi-column filtering

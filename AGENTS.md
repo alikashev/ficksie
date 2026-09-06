@@ -20,6 +20,47 @@ Ficksie is a PHP 8+ / MySQL / vanilla JS single-page application (SPA) offering 
 - **No eval, no innerHTML with raw user data** — use `escHtml()` for all output
 - **Never embed dynamic text in `data-*` attributes** — `escHtml()` does not escape double quotes; values with quotes break/truncate. Tag elements with an ID and look values up from `state` instead
 
+## AI Chat Assistant (Current Feature)
+
+### Status: LIVE
+Backend, API routes, DB tables, and the frontend (`ai-chat.js` + `ch-` CSS) all wired and streaming against NVIDIA. `NVIDIA_API_KEY` is set.
+
+Known quirks handled:
+- `api/ai.php` must read `$resource = $parts[1]` (the sub-action after the `ai` prefix) — was `$parts[0]` which matched `'ai'` and 404'd every route.
+- Default model was EOL'd by NVIDIA (`nvidia/llama-3.3-nemotron-super-49b-v1`, gone 2026-08-26). Current default: `nvidia/nemotron-3-super-120b-a12b`.
+- `ai_stream_reply()` retries up to 3× when a stream "succeeds" but emits zero `content` chunks (NVIDIA reasoning-model empty-completion quirk). If all attempts are empty, an error bubble is shown.
+
+### What Was Built
+1. **`includes/ai.php`** — `AiHelper` class: curated model catalog (~26 models) + live NVIDIA model fetch via `ai_cache` (TTL 86400s), `isChatModel`/`isVisionModel`/`friendlyError`, SSE helpers (`sseStart`/`sseEvent`), streaming chat via curl write-function, conversation/message/attachment DB CRUD, `buildRequestMessages` (vision images → `image_url` data-URIs), `resolveAttachments`, `throttleOk`, auto-title, orphan attachment cleanup
+2. **`api/ai.php`** — routes: `GET/POST models`, `GET/POST/PATCH/DELETE /conversations[/{id}]`, `POST /conversations/{id}/messages` (SSE: `start`/`delta`/`reason`/`error`/`[DONE]`), `POST /conversations/{id}/regenerate` (SSE), `POST/GET/DELETE /attachments` (magic-number validated images); auto-creates tables, `session_write_close()` before SSE
+3. **`assets/js/ai-chat.js`** — `renderAiChat()` entry, `aiState`, model menu/tags, conversation list (open/create/rename/delete), welcome+suggestions, hand-rolled Markdown renderer, hljs code blocks, SSE parsing with throttled re-render, AbortController stop, regenerate, edit-and-resend (`edit_message_id`), copy, image attachments (picker/drag-drop, pending chips, vision gating), responsive sidebar overlay
+4. **Integration** — `index.php`: new "AI Assistant" nav group + `data-view="ai-chat"` pill, `ai-chat.js` script before `app.js`, highlight.js 11.9.0 (atom-one-dark) CDN; `app.js`: `viewMeta['ai-chat']` entry + `case 'ai-chat'` in `dispatchRender`; `style.css` v128 appended `ch-` block (uses `calc(100vh - 140px)` like `.rte-wrap`)
+
+### Key Files
+- `config.php` — `NVIDIA_API_KEY=''` (unset), `NVIDIA_BASE_URL`, `NVIDIA_DEFAULT_MODEL`, `AI_SYSTEM_PROMPT` (ficksie-specific), attachment/message/`NVIDIA_MODELS_CACHE_TTL` config
+- `includes/ai.php` — `AiHelper`, the whole backend brain
+- `api/ai.php` — REST routes + SSE + uploads
+- `api/index.php` — `case 'ai'` registered (line ~72)
+- `assets/js/ai-chat.js` — frontend (v=1)
+- `assets/css/style.css` — `ch-` block (v=128)
+- `index.php` — nav pill + script includes + CSS version `?v=128`
+
+### Known Quirks / Rules
+- **API key never in the browser** — only `config.php` → `AiHelper`
+- Attachment images served inline from same origin only; validated by creator + magic number; pending rows cleaned up on delete
+- SSE lines: `data: {json}` and final `data: [DONE]`; the frontend parses newline-delimited `data:` lines
+- `buildRequestMessages()` injects current model context; vision models get `image_url` data-URIs
+- DB timezone rule applies (use `UTC_TIMESTAMP()`); `ai_messages` has a `reasoning` column
+- Model menu + welcome banner degrade gracefully when `NVIDIA_API_KEY` is empty (setup mode)
+- `aiState.listInited` guards duplicate model fetch; `chSyncAfterStream()` converges placeholder ids after each stream
+- **First-question throttle bug (fixed)** — `throttleOk()` used `last_message_at`, which `createConversation` sets at creation time, so a brand-new conversation's very first message was rejected with "You are sending messages too quickly." It now returns true when the conversation has zero messages.
+- **SSE handlers must `return` after streaming** — in `api/ai.php` the `messages`/`regenerate` POST branches must `return` immediately after `ai_handle_send()`/`ai_handle_regenerate()`. Otherwise control falls through to `Response::error('Method not allowed', 405)`, which fires `http_response_code()` after SSE headers and pollutes the error log ("headers already sent").
+
+### To Finish
+1. Set `NVIDIA_API_KEY` in `config.php` (from https://build.nvidia.com)
+2. Live HTTP streaming smoke test (curl `POST /api/ai/conversations/{id}/messages`, expect `data:` SSE lines)
+3. Test real vision flow with a Qwen-VL / Gemma 3 / Llama 4 model
+
 ## Environment
 - **Server**: DirectAdmin on CentOS 8
 - **PHP**: 8.x, timezone set to UTC (`date_default_timezone_set('UTC')` in `config.php`)
