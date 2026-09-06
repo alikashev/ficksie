@@ -33,7 +33,7 @@ try {
         cache_key VARCHAR(64) PRIMARY KEY,
         data MEDIUMBLOB NOT NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    ) ENGINE=InnoDB");
+    ) ENGINE=InnoDB DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
     Database::execute("CREATE TABLE IF NOT EXISTS ai_conversations (
         id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
         user_id INT UNSIGNED NOT NULL,
@@ -45,7 +45,7 @@ try {
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
         INDEX idx_ai_conv_user (user_id, last_message_at),
         FOREIGN KEY fk_ai_conv_user (user_id) REFERENCES users(id) ON DELETE CASCADE
-    ) ENGINE=InnoDB");
+    ) ENGINE=InnoDB DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
     Database::execute("CREATE TABLE IF NOT EXISTS ai_messages (
         id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
         conversation_id INT UNSIGNED NOT NULL,
@@ -61,7 +61,7 @@ try {
         INDEX idx_ai_msg_conv (conversation_id, id),
         FOREIGN KEY fk_ai_msg_conv (conversation_id) REFERENCES ai_conversations(id) ON DELETE CASCADE,
         FOREIGN KEY fk_ai_msg_user (user_id) REFERENCES users(id) ON DELETE CASCADE
-    ) ENGINE=InnoDB");
+    ) ENGINE=InnoDB DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
     Database::execute("CREATE TABLE IF NOT EXISTS ai_attachments (
         id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
         user_id INT UNSIGNED NOT NULL,
@@ -76,7 +76,7 @@ try {
         INDEX idx_ai_att_user (user_id),
         FOREIGN KEY fk_ai_att_user (user_id) REFERENCES users(id) ON DELETE CASCADE,
         FOREIGN KEY fk_ai_att_conv (conversation_id) REFERENCES ai_conversations(id) ON DELETE SET NULL
-    ) ENGINE=InnoDB");
+    ) ENGINE=InnoDB DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
 } catch (Throwable $e) {
     // Tables presumably already exist with slightly different definitions.
 }
@@ -217,8 +217,16 @@ function ai_stream_reply(array $conv, int $userId): void
 
     // Persist whatever we have, even on disconnect, abort or failure.
     if ($result['ok']) {
-        AiHelper::updateAssistantMessage($messageId, $buffer, null, $reasonBuf !== '' ? $reasonBuf : null);
-        AiHelper::touchConversation((int) $conv['id']);
+        try {
+            AiHelper::updateAssistantMessage($messageId, $buffer, null, $reasonBuf !== '' ? $reasonBuf : null);
+            AiHelper::touchConversation((int) $conv['id']);
+        } catch (Throwable $e) {
+            AiHelper::log('persist failed', ['err' => $e->getMessage()]);
+            AiHelper::sseEvent('error', ['message' => 'The reply could not be saved. Please try again.']);
+            echo "data: [DONE]\n\n";
+            flush();
+            return;
+        }
     } else {
         AiHelper::markMessageError($messageId, $result['error'] ?? 'The AI request failed.');
         AiHelper::sseEvent('error', ['message' => $result['error'] ?? 'The AI request failed.']);

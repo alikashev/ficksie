@@ -134,7 +134,7 @@ CREATE TABLE IF NOT EXISTS ai_cache (
     cache_key VARCHAR(64) PRIMARY KEY,
     data MEDIUMBLOB NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-) ENGINE=InnoDB;
+) ENGINE=InnoDB DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 -- AI conversations
 CREATE TABLE IF NOT EXISTS ai_conversations (
@@ -148,7 +148,7 @@ CREATE TABLE IF NOT EXISTS ai_conversations (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     INDEX idx_ai_conv_user (user_id, last_message_at),
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-) ENGINE=InnoDB;
+) ENGINE=InnoDB DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 -- AI messages
 CREATE TABLE IF NOT EXISTS ai_messages (
@@ -167,7 +167,7 @@ CREATE TABLE IF NOT EXISTS ai_messages (
     INDEX idx_ai_msg_conv (conversation_id, id),
     FOREIGN KEY (conversation_id) REFERENCES ai_conversations(id) ON DELETE CASCADE,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-) ENGINE=InnoDB;
+) ENGINE=InnoDB DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 -- AI file attachments (images and, in the future, other file types)
 CREATE TABLE IF NOT EXISTS ai_attachments (
@@ -184,4 +184,4 @@ CREATE TABLE IF NOT EXISTS ai_attachments (
     INDEX idx_ai_att_user (user_id),
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
     FOREIGN KEY (conversation_id) REFERENCES ai_conversations(id) ON DELETE SET NULL
-) ENGINE=InnoDB;
+) ENGINE=InnoDB DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;

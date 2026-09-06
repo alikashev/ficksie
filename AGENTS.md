@@ -80,6 +80,7 @@ Known quirks handled:
 - Exim daemon must be restarted (`systemctl restart exim`) after config file changes
 - **DNS tool caching is DISABLED** — `dnsCacheGet()` in `api/dns.php` always returns null and `dnsCacheSet()` is a no-op. DNS/WHOIS data is always fetched live for every domain (per user requirement). The `dns_cache` table still exists but is unused; `dnsCacheClear()` remains for cleanup.
 - **DNSSEC detection** — `checkDnssec()` runs in both full and quick modes and queries DNSKEY (48) + DS (43) via Cloudflare DoH (`queryDohRaw()`), because `dns_get_record` cannot see DNSKEY on Cloudflare-fronted domains (they answer ANY with HINFO). A zone is reported as DNSSEC-enabled when either DNSKEY or DS records are found. The WHOIS override regex also recognizes `signedDelegation`/`delegationSigned` values from RDAP.
+- **AI tables MUST be utf8mb4** — `config.php` sets `DB_CHARSET = 'utf8mb4'`, but MariaDB's server default is latin1, so `api/ai.php` CREATE TABLE statements and `database/schema.sql` MUST append `DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci`. If a table ends up latin1, model output containing non-Latin-1 chars (em-dash, U+2011 `‑`, smart quotes) makes `AiHelper::updateAssistantMessage()` throw `1366 Incorrect string value` after SSE already streamed — the assistant row stays empty and the UI shows "(no response)". If you ever see empty assistant rows + "headers already sent at includes/ai.php" warnings, check `SHOW TABLE STATUS` collation on `ai_messages`.
 
 ## Email Deliverability Tester (Current Feature)
 
