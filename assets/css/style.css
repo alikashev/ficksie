@@ -622,7 +622,9 @@ a:hover { color: var(--accent-hover); }
     display: flex;
     flex-direction: column;
     overflow-y: auto;
+    overflow-x: hidden;
     padding: 0;
+    min-width: 0;
 }
 
 /* ============================================
@@ -1206,6 +1208,8 @@ a:hover { color: var(--accent-hover); }
     display: grid;
     grid-template-columns: repeat(3, 1fr);
     gap: 12px;
+    min-width: 0;
+    width: 100%;
 }
 
 .command-card {
@@ -1216,6 +1220,8 @@ a:hover { color: var(--accent-hover); }
     display: flex;
     flex-direction: column;
     box-shadow: var(--shadow-sm);
+    min-width: 0;
+    overflow: hidden;
 }
 
 .command-card:hover {
